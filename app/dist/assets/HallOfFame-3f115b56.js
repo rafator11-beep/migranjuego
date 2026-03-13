@@ -1,4 +1,4 @@
-import { r as reactExports, E as isSupabaseConfigured, F as supabase, l as loadLocalRankings, j as jsxRuntimeExports, T as Trophy, m as motion, H as Crown } from "./index-14f03722.js";
+import { r as reactExports, E as isSupabaseConfigured, F as supabase, l as loadLocalRankings, j as jsxRuntimeExports, T as Trophy, m as motion, H as Crown } from "./index-cc53f094.js";
 function getPlayerTitle(xp, gamesPlayed, wins) {
   if (xp >= 5e3 || wins >= 200)
     return { title: "Dios de la Fiesta", emoji: "⚡", color: "text-amber-300" };

@@ -30407,9 +30407,9 @@ function shouldShowDeprecationWarning() {
 }
 if (shouldShowDeprecationWarning())
   console.warn("⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217");
-const SUPABASE_URL = "https://atswsltnjjsokouvfbut.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_7uCsMmM6xhL7O9psmckrQw_Y4hjYk10";
-const isSupabaseConfigured = Boolean(SUPABASE_PUBLISHABLE_KEY) && !(SUPABASE_URL == null ? void 0 : SUPABASE_URL.includes("placeholder")) && !(SUPABASE_PUBLISHABLE_KEY == null ? void 0 : SUPABASE_PUBLISHABLE_KEY.includes("placeholder"));
+const SUPABASE_URL = {}.VITE_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = {}.VITE_SUPABASE_PUBLISHABLE_KEY;
+const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY) && !(SUPABASE_URL == null ? void 0 : SUPABASE_URL.includes("placeholder")) && !(SUPABASE_PUBLISHABLE_KEY == null ? void 0 : SUPABASE_PUBLISHABLE_KEY.includes("placeholder"));
 const supabase = isSupabaseConfigured ? createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: localStorage,
@@ -30923,8 +30923,8 @@ function AuthProvider({ children }) {
   }, children });
 }
 const scriptRel = "modulepreload";
-const assetsURL = function(dep) {
-  return "/" + dep;
+const assetsURL = function(dep, importerUrl) {
+  return new URL(dep, importerUrl).href;
 };
 const seen = {};
 const __vitePreload = function preload(baseModule, deps, importerUrl) {
@@ -30933,7 +30933,7 @@ const __vitePreload = function preload(baseModule, deps, importerUrl) {
   }
   const links = document.getElementsByTagName("link");
   return Promise.all(deps.map((dep) => {
-    dep = assetsURL(dep);
+    dep = assetsURL(dep, importerUrl);
     if (dep in seen)
       return;
     seen[dep] = true;
@@ -57124,11 +57124,11 @@ async function playFile(path, fallbackFreq) {
   }
 }
 const sfx = {
-  click: () => playFile("/sounds/click.mp3", 520),
-  legendary: () => playFile("/sounds/legendary.mp3", 780),
-  cursed: () => playFile("/sounds/cursed.mp3", 180),
-  chaos: () => playFile("/sounds/chaos.mp3", 100),
-  whoosh: () => playFile("/sounds/whoosh.mp3", 400)
+  click: () => playFile("sounds/click.mp3", 520),
+  legendary: () => playFile("sounds/legendary.mp3", 780),
+  cursed: () => playFile("sounds/cursed.mp3", 180),
+  chaos: () => playFile("sounds/chaos.mp3", 100),
+  whoosh: () => playFile("sounds/whoosh.mp3", 400)
 };
 function vibe(pattern = 40) {
   try {
@@ -65957,7 +65957,11 @@ async function createDailyRoom(roomName) {
   } catch {
     console.warn("[Daily] Netlify function not available, trying direct API...");
   }
-  const apiKey = (_a3 = { "VITE_SUPABASE_URL": "https://atswsltnjjsokouvfbut.supabase.co", "VITE_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_7uCsMmM6xhL7O9psmckrQw_Y4hjYk10", "VITE_DAILY_API_KEY": "7428608d07bb87a34fb47ba078ba8e71fa9741947a62aa47f2d5c28c9d71b37f", "BASE_URL": "/", "MODE": "production", "DEV": false, "PROD": true, "SSR": false }) == null ? void 0 : _a3.VITE_DAILY_API_KEY;
+  const apiKey = (_a3 = { "BASE_URL": "./", "MODE": "production", "DEV": false, "PROD": true, "SSR": false }) == null ? void 0 : _a3.VITE_DAILY_API_KEY;
+  if (!apiKey) {
+    console.error("[Daily] No DAILY_API_KEY available (set VITE_DAILY_API_KEY in Netlify env vars)");
+    return null;
+  }
   try {
     const createRes = await fetch("https://api.daily.co/v1/rooms", {
       method: "POST",
@@ -74929,8 +74933,8 @@ function FloatingVideoBubbles({ playerName }) {
     error && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-red-500/80 text-white text-[9px] px-2 py-1 rounded-full mt-1 max-w-[120px] truncate", children: error })
   ] });
 }
-const Profiles = reactExports.lazy(() => __vitePreload(() => import("./Profiles-17e384d9.js"), true ? [] : void 0));
-const HallOfFame = reactExports.lazy(() => __vitePreload(() => import("./HallOfFame-87068a2d.js"), true ? [] : void 0).then((module2) => ({ default: module2.HallOfFame })));
+const Profiles = reactExports.lazy(() => __vitePreload(() => import("./Profiles-8acd56a8.js"), true ? [] : void 0, import.meta.url));
+const HallOfFame = reactExports.lazy(() => __vitePreload(() => import("./HallOfFame-3f115b56.js"), true ? [] : void 0, import.meta.url).then((module2) => ({ default: module2.HallOfFame })));
 const TEAM_CAPABLE_MODES = ["cultura", "trivia_futbol", "futbol"];
 function GameAppInner() {
   var _a3, _b2, _c3;
@@ -75484,7 +75488,7 @@ const queryClient = new QueryClient();
 const App = () => /* @__PURE__ */ jsxRuntimeExports.jsx(QueryClientProvider, { client: queryClient, children: /* @__PURE__ */ jsxRuntimeExports.jsx(AuthProvider, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(TooltipProvider, { children: [
   /* @__PURE__ */ jsxRuntimeExports.jsx(Toaster$1, {}),
   /* @__PURE__ */ jsxRuntimeExports.jsx(Toaster, {}),
-  /* @__PURE__ */ jsxRuntimeExports.jsx(BrowserRouter, { future: { v7_startTransition: true, v7_relativeSplatPath: true }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(Routes, { children: [
+  /* @__PURE__ */ jsxRuntimeExports.jsx(BrowserRouter, { basename: "/migranjuego", future: { v7_startTransition: true, v7_relativeSplatPath: true }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(Routes, { children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(Route, { path: "/", element: /* @__PURE__ */ jsxRuntimeExports.jsx(Index, {}) }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(Route, { path: "*", element: /* @__PURE__ */ jsxRuntimeExports.jsx(NotFound, {}) })
   ] }) })
