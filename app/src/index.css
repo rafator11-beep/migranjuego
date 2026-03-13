@@ -1,0 +1,195 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 230 15% 5%;
+    --foreground: 0 0% 97%;
+
+    --card: 230 12% 8%;
+    --card-foreground: 0 0% 97%;
+
+    --popover: 230 12% 8%;
+    --popover-foreground: 0 0% 97%;
+
+    --primary: 265 90% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 230 10% 14%;
+    --secondary-foreground: 0 0% 97%;
+
+    --muted: 230 10% 14%;
+    --muted-foreground: 230 10% 55%;
+
+    --accent: 175 85% 45%;
+    --accent-foreground: 230 15% 5%;
+
+    --destructive: 0 80% 55%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 230 10% 18%;
+    --input: 230 10% 18%;
+    --ring: 265 90% 65%;
+
+    --radius: 0.875rem;
+
+    /* Neon colors - vibrant and modern */
+    --neon-pink: 340 95% 60%;
+    --neon-blue: 200 100% 55%;
+    --neon-purple: 265 90% 65%;
+    --neon-green: 145 80% 50%;
+    --neon-orange: 25 95% 55%;
+    --neon-yellow: 45 100% 55%;
+
+    --sidebar-background: 230 12% 8%;
+    --sidebar-foreground: 230 10% 90%;
+    --sidebar-primary: 265 90% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 230 10% 14%;
+    --sidebar-accent-foreground: 230 10% 90%;
+    --sidebar-border: 230 10% 18%;
+    --sidebar-ring: 265 90% 65%;
+  }
+
+  .dark {
+    --background: 230 15% 5%;
+    --foreground: 0 0% 97%;
+
+    --card: 230 12% 8%;
+    --card-foreground: 0 0% 97%;
+
+    --popover: 230 12% 8%;
+    --popover-foreground: 0 0% 97%;
+
+    --primary: 265 90% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 230 10% 14%;
+    --secondary-foreground: 0 0% 97%;
+
+    --muted: 230 10% 14%;
+    --muted-foreground: 230 10% 55%;
+
+    --accent: 175 85% 45%;
+    --accent-foreground: 230 15% 5%;
+
+    --destructive: 0 70% 40%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 230 10% 18%;
+    --input: 230 10% 18%;
+    --ring: 265 90% 65%;
+
+    --sidebar-background: 230 12% 8%;
+    --sidebar-foreground: 230 10% 90%;
+    --sidebar-primary: 265 90% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 230 10% 14%;
+    --sidebar-accent-foreground: 230 10% 90%;
+    --sidebar-border: 230 10% 18%;
+    --sidebar-ring: 265 90% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply text-foreground;
+    background: linear-gradient(-45deg, hsl(var(--background)), hsl(236, 30%, 8%), hsl(var(--background)), hsl(265, 30%, 8%));
+    background-size: 400% 400%;
+    animation: gradient-bg 20s ease infinite;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  
+  @keyframes gradient-bg {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+}
+
+@layer utilities {
+  .neon-text {
+    text-shadow: 
+      0 0 5px hsl(var(--primary) / 0.6),
+      0 0 15px hsl(var(--primary) / 0.3),
+      0 0 30px hsl(var(--primary) / 0.15);
+  }
+
+  .neon-text-blue {
+    text-shadow: 
+      0 0 5px hsl(var(--neon-blue) / 0.6),
+      0 0 15px hsl(var(--neon-blue) / 0.3);
+  }
+
+  .neon-text-pink {
+    text-shadow: 
+      0 0 5px hsl(var(--neon-pink) / 0.6),
+      0 0 15px hsl(var(--neon-pink) / 0.3);
+  }
+
+  .neon-box {
+    box-shadow: 
+      0 0 8px hsl(var(--primary) / 0.4),
+      0 0 20px hsl(var(--primary) / 0.15),
+      inset 0 0 8px hsl(var(--primary) / 0.05);
+  }
+
+  .neon-box-blue {
+    box-shadow: 
+      0 0 8px hsl(var(--neon-blue) / 0.4),
+      0 0 20px hsl(var(--neon-blue) / 0.15),
+      inset 0 0 8px hsl(var(--neon-blue) / 0.05);
+  }
+
+  .neon-box-pink {
+    box-shadow: 
+      0 0 8px hsl(var(--neon-pink) / 0.4),
+      0 0 20px hsl(var(--neon-pink) / 0.15),
+      inset 0 0 8px hsl(var(--neon-pink) / 0.05);
+  }
+
+  .neon-border {
+    border: 1.5px solid hsl(var(--primary) / 0.5);
+    box-shadow: 
+      0 0 10px hsl(var(--primary) / 0.2),
+      inset 0 0 10px hsl(var(--primary) / 0.05);
+  }
+
+  .glow-pulse {
+    animation: glow-pulse 2.5s ease-in-out infinite;
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% {
+      box-shadow: 
+        0 0 5px hsl(var(--primary) / 0.3),
+        0 0 15px hsl(var(--primary) / 0.15);
+    }
+    50% {
+      box-shadow: 
+        0 0 10px hsl(var(--primary) / 0.5),
+        0 0 25px hsl(var(--primary) / 0.25);
+    }
+  }
+
+  .bg-grid-pattern {
+    background-image: 
+      radial-gradient(circle at 1px 1px, hsl(var(--primary) / 0.04) 1px, transparent 0);
+    background-size: 40px 40px;
+  }
+
+  .glass-card {
+    background: hsl(var(--card) / 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--border) / 0.5);
+  }
+}
