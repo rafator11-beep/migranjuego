@@ -1,0 +1,189 @@
+import { useEffect, useRef, useState } from 'react';
+import SimplePeer from 'simple-peer';
+import { supabase } from '@/integrations/supabase/client';
+import { motion } from 'framer-motion';
+import { Video, VideoOff, Mic, MicOff } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+interface PeerBubblesProps {
+    roomId: string;
+    playerId: string;
+    onClose: () => void;
+}
+
+export function PeerBubbles({ roomId, playerId, onClose }: PeerBubblesProps) {
+    const [peers, setPeers] = useState<{ [key: string]: SimplePeer.Instance }>({});
+    const [streams, setStreams] = useState<{ [key: string]: MediaStream }>({});
+    const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+    const [isMuted, setIsMuted] = useState(false);
+    const [isVideoRaw, setIsVideoRaw] = useState(true); // Is camera on?
+
+    const localVideoRef = useRef<HTMLVideoElement>(null);
+    const peersRef = useRef<{ [key: string]: SimplePeer.Instance }>({});
+
+    // 1. Get Local Stream
+    useEffect(() => {
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then(stream => {
+                setLocalStream(stream);
+                if (localVideoRef.current) {
+                    localVideoRef.current.srcObject = stream;
+                }
+            })
+            .catch(err => {
+                console.error("Error accessing media devices:", err);
+            });
+
+        return () => {
+            // Cleanup local stream
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+        };
+    }, []);
+
+    // 2. Signaling Logic
+    useEffect(() => {
+        if (!localStream) return;
+
+        const channel = supabase.channel(`video-signaling-${roomId}`);
+
+        channel
+            .on('broadcast', { event: 'signal' }, ({ payload }) => {
+                const { signal, from, to } = payload;
+                if (to !== playerId) return; // Not for me
+
+                // Incoming signal
+                if (!peersRef.current[from]) {
+                    // Start peer (receiver)
+                    const peer = new SimplePeer({
+                        initiator: false,
+                        trickle: false,
+                        stream: localStream
+                    });
+
+                    peer.on('signal', data => {
+                        channel.send({
+                            type: 'broadcast',
+                            event: 'signal',
+                            payload: { signal: data, from: playerId, to: from }
+                        });
+                    });
+
+                    peer.on('stream', stream => {
+                        setStreams(prev => ({ ...prev, [from]: stream }));
+                    });
+
+                    peer.signal(signal);
+                    peersRef.current[from] = peer;
+                    setPeers(prev => ({ ...prev, [from]: peer }));
+                } else {
+                    peersRef.current[from].signal(signal);
+                }
+            })
+            .on('broadcast', { event: 'ready' }, ({ payload }) => {
+                const { from } = payload;
+                if (from === playerId) return;
+                
+                // New peer joined, I must initiate
+                if (!peersRef.current[from]) {
+                    const peer = new SimplePeer({
+                        initiator: true,
+                        trickle: false,
+                        stream: localStream
+                    });
+
+                    peer.on('signal', data => {
+                        channel.send({
+                            type: 'broadcast',
+                            event: 'signal',
+                            payload: { signal: data, from: playerId, to: from }
+                        });
+                    });
+
+                    peer.on('stream', stream => {
+                        setStreams(prev => ({ ...prev, [from]: stream }));
+                    });
+
+                    peersRef.current[from] = peer;
+                    setPeers(prev => ({ ...prev, [from]: peer }));
+                }
+            })
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    // Announce ready
+                    channel.send({
+                        type: 'broadcast',
+                        event: 'ready',
+                        payload: { from: playerId }
+                    });
+                }
+            });
+
+        return () => {
+            supabase.removeChannel(channel);
+            Object.values(peersRef.current).forEach(p => p.destroy());
+        };
+    }, [localStream, roomId, playerId]);
+
+    const toggleMute = () => {
+        if (localStream) {
+            localStream.getAudioTracks().forEach(track => track.enabled = !isMuted);
+            setIsMuted(!isMuted);
+        }
+    };
+
+    const toggleVideo = () => {
+        if (localStream) {
+            localStream.getVideoTracks().forEach(track => track.enabled = !isVideoRaw);
+            setIsVideoRaw(!isVideoRaw);
+        }
+    };
+
+    return (
+        <>
+            {/* Local Video Bubble */}
+            <motion.div
+                drag
+                dragMomentum={false}
+                className="fixed bottom-20 right-4 z-[9999] w-32 h-32 rounded-full overflow-hidden border-2 border-white/50 shadow-xl bg-black"
+            >
+                <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
+                <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2">
+                     <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full bg-black/50 text-white" onClick={toggleMute}>
+                        {isMuted ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
+                     </Button>
+                     <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full bg-black/50 text-white" onClick={onClose}>
+                        <VideoOff className="w-3 h-3" />
+                     </Button>
+                </div>
+            </motion.div>
+
+            {/* Remote Bubbles */}
+            {Object.entries(streams).map(([peerId, stream], index) => (
+                <RemoteBubble key={peerId} stream={stream} index={index} />
+            ))}
+        </>
+    );
+}
+
+function RemoteBubble({ stream, index }: { stream: MediaStream, index: number }) {
+    const ref = useRef<HTMLVideoElement>(null);
+    
+    useEffect(() => {
+        if (ref.current) ref.current.srcObject = stream;
+    }, [stream]);
+
+    return (
+        <motion.div
+            drag
+            dragMomentum={false}
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="fixed top-20 right-4 z-[9998] w-24 h-24 rounded-full overflow-hidden border-2 border-blue-500 shadow-xl bg-black"
+            style={{ top: 100 + (index * 110) }} // Simple stack layout
+        >
+            <video ref={ref} autoPlay playsInline className="w-full h-full object-cover" />
+        </motion.div>
+    );
+}

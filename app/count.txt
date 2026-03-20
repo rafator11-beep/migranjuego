@@ -1,0 +1,19 @@
+=== RECUENTO DE CARTAS ===
+
+Clásico: 988 cartas
+YoNunca: 1395 cartas
+Picante: 807 cartas
+MasProbable: 838 cartas
+Pacovers: 1852 cartas
+NostalgiaEspana: 1803 cartas
+EnLaCama: 59 cartas
+CategoriasLetras: 54 cartas
+CategoriasReto: 56 cartas
+RetosPersonalizados: 5 cartas
+Normas: 222 cartas
+TriviaFutbol: 892 cartas
+TriviaCultura: 531 cartas
+
+Cartas Base de Megamix (sin contar Trivia, Virus, Mímica, Normas): 6054
+
+Total Absoluto (En toda la app): 9502 cartas
