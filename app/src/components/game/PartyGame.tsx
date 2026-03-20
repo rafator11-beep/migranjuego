@@ -149,15 +149,10 @@ export function PartyGame({ mode, onExit, isMultiplayer = false, isHost = false,
     setGameOver
   } = useGameEngine(mode);
 
-  // Designate Captain at the start
+  // Show Captain Selection dialog at the start (manual pick, not random)
   useEffect(() => {
-    if (players.length > 0 && !gameState.captainId) {
-      const randomCaptain = players[Math.floor(Math.random() * players.length)];
-      setGameState(prev => ({ ...prev, captainId: randomCaptain.id }));
-      toast.success(`¡CAPITÁN DESIGNADO: ${randomCaptain.name}!`, {
-        icon: <Crown className="w-5 h-5 text-amber-500" />,
-        className: "bg-slate-900 border-amber-500/50 text-white font-black"
-      });
+    if (players.length > 0 && !gameState.captainId && !gameState.showCaptainSelection) {
+      setGameState(prev => ({ ...prev, showCaptainSelection: true }));
     }
   }, [players, gameState.captainId]);
 
@@ -731,34 +726,31 @@ export function PartyGame({ mode, onExit, isMultiplayer = false, isHost = false,
 
         return (
           <Dialog open={isVoting} onOpenChange={() => { }}>
-            <DialogContent className="sm:max-w-md bg-gradient-to-r from-slate-900/80 to-slate-800/80 border-primary/50 text-white z-[60]" aria-describedby={undefined}>
-              <DialogHeader>
-                <DialogTitle className="text-2xl font-bold text-center neon-text text-primary">
+            <DialogContent className="sm:max-w-md bg-gradient-to-r from-slate-900/95 to-slate-800/95 border-primary/50 text-white z-[60] max-h-[85vh] flex flex-col" aria-describedby={undefined}>
+              <DialogHeader className="shrink-0">
+                <DialogTitle className="text-xl font-bold text-center neon-text text-primary">
                   🗳️ Votación {maxVotes > 1 ? `(Elige a ${maxVotes})` : ''}
                 </DialogTitle>
-                <DialogDescription id="voting-desc" className="text-center text-lg text-white/90 font-medium pt-4">
+                <DialogDescription id="voting-desc" className="text-center text-sm text-white/90 font-medium pt-2 px-2">
                   {currentText}
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="grid grid-cols-2 gap-3 py-4">
+              <div className="grid grid-cols-2 gap-2 py-3 overflow-y-auto max-h-[45vh] no-scrollbar flex-1">
                 {players.map(p => {
                   const isSelected = gameState.votingSelections?.includes(p.id);
                   return (
                     <motion.button
                       key={p.id}
-                      whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => {
                         const currentSelections = gameState.votingSelections || [];
                         if (maxVotes === 1) {
-                          // Instant cast & advance
-                          handleAdjustXP(p.id, 5); // Add XP for being voted
+                          handleAdjustXP(p.id, 5);
                           trackVote(p.id);
                           toast.success(`${p.name} ha sido elegido! (+5 XP)`);
                           handleNext();
                         } else {
-                          // Toggle Selection
                           if (currentSelections.includes(p.id)) {
                             setGameState(prev => ({ ...prev, votingSelections: currentSelections.filter(id => id !== p.id) }));
                           } else if (currentSelections.length < maxVotes) {
@@ -766,30 +758,32 @@ export function PartyGame({ mode, onExit, isMultiplayer = false, isHost = false,
                           }
                         }
                       }}
-                      className={`flex flex-col items-center gap-3 p-5 rounded-3xl transition-all border-2 ${isSelected ? 'bg-primary/40 border-primary shadow-[0_0_20px_rgba(var(--primary-rgb),0.4)]' : 'bg-slate-800/40 border-white/10 hover:border-primary/50'}`}
+                      className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition-all border-2 ${isSelected ? 'bg-primary/40 border-primary shadow-[0_0_20px_rgba(var(--primary-rgb),0.4)]' : 'bg-slate-800/40 border-white/10 hover:border-primary/50'}`}
                     >
-                      <div className={`w-20 h-20 rounded-full overflow-hidden border-4 transition-transform ${isSelected ? 'border-primary scale-110' : 'border-white/20'}`}>
+                      <div className={`w-14 h-14 rounded-full overflow-hidden border-3 transition-transform ${isSelected ? 'border-primary scale-110' : 'border-white/20'}`}>
                         {p.avatar_url ? (
                           <img src={p.avatar_url} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full bg-slate-800 flex items-center justify-center text-2xl font-black">
+                          <div className="w-full h-full bg-slate-800 flex items-center justify-center text-lg font-black">
                             {p.name.substring(0, 2).toUpperCase()}
                           </div>
                         )}
                       </div>
-                      <span className="font-black text-lg tracking-tight text-white uppercase">{p.name}</span>
+                      <span className="font-black text-sm tracking-tight text-white uppercase">{p.name}</span>
                     </motion.button>
                   );
                 })}
               </div>
-              <div className="text-center text-xs text-white/60">
-                {maxVotes === 1 ? 'Pulsa en quien creas que es más probable.' : `Selecciona a ${maxVotes} jugadores.`}
-              </div>
 
-              {maxVotes > 1 && (
-                <div className="mt-4">
+              {/* Fixed bottom area — always visible */}
+              <div className="shrink-0 pt-3 border-t border-white/10 space-y-2">
+                <div className="text-center text-xs text-white/60">
+                  {maxVotes === 1 ? 'Pulsa en quien creas que es más probable.' : `Selecciona a ${maxVotes} jugadores.`}
+                </div>
+
+                {maxVotes > 1 && (
                   <Button
-                    className="w-full h-12 text-lg font-bold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 border border-white/10 backdrop-blur-sm"
+                    className="w-full h-12 text-lg font-bold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 border border-white/10"
                     disabled={(gameState.votingSelections?.length || 0) < maxVotes}
                     onClick={() => {
                       const selections = gameState.votingSelections || [];
@@ -799,28 +793,23 @@ export function PartyGame({ mode, onExit, isMultiplayer = false, isHost = false,
                         const name = players.find(p => p.id === id)?.name;
                         toast.success(`${name} elegido! (+5 XP)`);
                       });
-                      // Clear selections and advance
                       setGameState(prev => ({ ...prev, votingSelections: [] }));
                       handleNext();
                     }}
                   >
                     Confirmar Votación
                   </Button>
-                </div>
-              )}
+                )}
 
-              {isHost && (
-                <div className="flex justify-center mt-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleNext}
-                    className="text-xs text-white/60 hover:text-white border border-white/20"
-                  >
-                    Saltar Votación (Host)
-                  </Button>
-                </div>
-              )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleNext}
+                  className="w-full text-xs text-white/60 hover:text-white border border-white/20"
+                >
+                  Saltar Votación ⏭
+                </Button>
+              </div>
             </DialogContent>
           </Dialog>
         );
@@ -1201,16 +1190,16 @@ export function PartyGame({ mode, onExit, isMultiplayer = false, isHost = false,
               ⚠️ ACCESO RESTRINGIDO
             </DialogTitle>
           </DialogHeader>
-          <div className="text-center py-8 space-y-8">
+          <div className="text-center py-6 space-y-6">
             <div className="space-y-2">
-              <p className="text-lg text-white/60 font-bold uppercase tracking-widest">Entrega el dispositivo a:</p>
-              <p className="text-5xl font-black text-white bg-red-500/10 p-6 rounded-[32px] border border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
+              <p className="text-base text-white/60 font-bold uppercase tracking-widest">Entrega el dispositivo a:</p>
+              <p className="text-4xl font-black text-white bg-red-500/10 p-4 rounded-2xl border border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
                 {players.find(p => p.id === gameState.impostorData?.impostorPlayerId)?.name || currentPlayer?.name}
               </p>
             </div>
             
-            <div className="bg-slate-800/50 p-4 rounded-2xl border border-white/5">
-              <p className="text-red-400 font-black animate-pulse text-sm uppercase tracking-[0.3em]">¡CAPITÁN! NO MIRES LA PANTALLA</p>
+            <div className="bg-slate-800/50 p-3 rounded-xl border border-white/5">
+              <p className="text-red-400 font-black text-xs uppercase tracking-[0.3em]">¡CAPITÁN! NO MIRES LA PANTALLA</p>
             </div>
 
             <div className="relative">
@@ -1219,7 +1208,7 @@ export function PartyGame({ mode, onExit, isMultiplayer = false, isHost = false,
                 onMouseUp={() => setGameState(prev => ({ ...prev, showImpostorWord: false }))}
                 onTouchStart={() => setGameState(prev => ({ ...prev, showImpostorWord: true }))}
                 onTouchEnd={() => setGameState(prev => ({ ...prev, showImpostorWord: false }))}
-                className="w-full h-48 rounded-[40px] bg-gradient-to-br from-red-500/20 to-slate-900 border-2 border-dashed border-red-500/40 flex flex-col items-center justify-center gap-4 transition-all active:scale-95 active:bg-red-500/30 overflow-hidden shadow-2xl"
+                className="w-full h-36 rounded-2xl bg-gradient-to-br from-red-500/20 to-slate-900 border-2 border-dashed border-red-500/40 flex flex-col items-center justify-center gap-3 transition-all active:scale-95 active:bg-red-500/30 overflow-hidden shadow-xl"
               >
                 <AnimatePresence mode="wait">
                   {!gameState.showImpostorWord ? (
@@ -1228,44 +1217,38 @@ export function PartyGame({ mode, onExit, isMultiplayer = false, isHost = false,
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="flex flex-col items-center gap-3"
+                      className="flex flex-col items-center gap-2"
                     >
-                      <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/30">
-                        <EyeOff className="w-8 h-8 text-red-500" />
-                      </div>
-                      <p className="font-black text-red-500 uppercase tracking-[0.2em] text-[10px]">MANTÉN PULSADO PARA REVELAR</p>
+                      <EyeOff className="w-10 h-10 text-red-500" />
+                      <p className="font-black text-red-500 uppercase tracking-[0.15em] text-[9px]">{players.find(p => p.id === gameState.impostorData?.impostorPlayerId)?.name || currentPlayer?.name}: MANTÉN PULSADO</p>
                     </motion.div>
                   ) : (
                     <motion.div
                       key="revealed"
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="flex flex-col items-center gap-4 px-6 text-center"
+                      className="flex flex-col items-center gap-3 px-4 text-center"
                     >
-                      <p className="text-xs font-black text-red-400 uppercase tracking-widest mb-1">Tu Identidad Secreta</p>
-                      <div className="p-4 bg-white/5 rounded-2xl border border-white/10 w-full">
-                        <ImpostorRound
-                          players={players}
-                          impostorPlayerId={gameState.impostorData?.impostorPlayerId || ''}
-                          realQuestion={gameState.impostorData?.currentImpostorReal || ''}
-                          impostorQuestion={gameState.impostorData?.currentImpostorFake || ''}
-                          onComplete={(impostorCaught, votedPlayerId) => {
-                            // Handle completion logic
-                            if (impostorCaught) {
-                              players.forEach(p => {
-                                if (p.id !== gameState.impostorData?.impostorPlayerId) addScore(p.id, 20);
-                              });
-                            } else {
-                              addScore(gameState.impostorData?.impostorPlayerId || '', 50);
-                            }
-                            setGameState(prev => ({ ...prev, showImpostorWarning: false, showImpostorWord: false }));
-                            handleNext();
-                          }}
-                          onExit={() => {
-                            setGameState(prev => ({ ...prev, showImpostorWarning: false, showImpostorWord: false }));
-                          }}
-                        />
-                      </div>
+                      <ImpostorRound
+                        players={players}
+                        impostorPlayerId={gameState.impostorData?.impostorPlayerId || ''}
+                        realQuestion={gameState.impostorData?.currentImpostorReal || ''}
+                        impostorQuestion={gameState.impostorData?.currentImpostorFake || ''}
+                        onComplete={(impostorCaught, votedPlayerId) => {
+                          if (impostorCaught) {
+                            players.forEach(p => {
+                              if (p.id !== gameState.impostorData?.impostorPlayerId) addScore(p.id, 20);
+                            });
+                          } else {
+                            addScore(gameState.impostorData?.impostorPlayerId || '', 50);
+                          }
+                          setGameState(prev => ({ ...prev, showImpostorWarning: false, showImpostorWord: false }));
+                          handleNext();
+                        }}
+                        onExit={() => {
+                          setGameState(prev => ({ ...prev, showImpostorWarning: false, showImpostorWord: false }));
+                        }}
+                      />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1273,12 +1256,12 @@ export function PartyGame({ mode, onExit, isMultiplayer = false, isHost = false,
             </div>
           </div>
           <Button
-            className="w-full h-16 text-lg font-black bg-white text-black hover:bg-white/90 rounded-[24px] shadow-xl transition-all"
+            className="w-full h-14 text-lg font-black bg-white text-black hover:bg-white/90 rounded-2xl shadow-xl transition-all"
             onClick={() => {
               setGameState(prev => ({
                 ...prev,
                 showImpostorWarning: false,
-                showImpostor: false, // Already revealed via long press
+                showImpostor: false,
               }));
               handleNext();
             }}
@@ -1469,11 +1452,11 @@ export function PartyGame({ mode, onExit, isMultiplayer = false, isHost = false,
 
         {/* Active Rule Display */}
         {(gameState.currentNorma || gameState.showNormaGlobal) && (
-          <div className="mb-6 mx-auto max-w-sm z-10 pointer-events-none relative">
-            <div className="bg-gradient-to-r from-orange-600/40 to-orange-900/40 border-2 border-orange-500 backdrop-blur-md rounded-2xl p-4 text-center shadow-[0_0_20px_rgba(249,115,22,0.3)] animate-pulse">
+          <div className="mb-6 mx-auto max-w-sm z-10 relative">
+            <div className="bg-gradient-to-r from-orange-600/40 to-orange-900/40 border-2 border-orange-500 backdrop-blur-md rounded-2xl p-4 text-center shadow-[0_0_20px_rgba(249,115,22,0.3)]">
               <p className="text-[10px] uppercase tracking-[0.3em] text-orange-400 font-black mb-1">📜 NORMA GLOBAL ACTIVA</p>
               <p className="text-base text-white font-black leading-tight uppercase tracking-tight">
-                {gameState.currentNorma || "¡Preparando nueva norma!"}
+                NORMA: {gameState.currentNorma || "¡Preparando nueva norma!"}
               </p>
             </div>
           </div>
@@ -1906,16 +1889,16 @@ export function PartyGame({ mode, onExit, isMultiplayer = false, isHost = false,
                 <div className="bg-black/40 p-4 rounded-2xl border border-white/5 space-y-3">
                   <div>
                     <p className="text-[9px] text-white/40 font-black uppercase tracking-widest mb-0.5">Infectado</p>
-                    <p className="text-xl font-black text-white leading-tight">{gameState.virusAlertData.player.name}</p>
+                    <p className="text-xl font-black text-white leading-tight">{gameState.virusAlertData?.player?.name || 'Jugador'}</p>
                   </div>
                   
                   <div className="pt-3 border-t border-white/5">
                     <p className="text-[9px] text-green-400 font-black uppercase tracking-widest mb-0.5">Efecto</p>
                     <p className="text-base font-black text-white uppercase leading-tight">
-                      {gameState.virusAlertData.virus.virusName || gameState.virusAlertData.virus.name}
+                      {gameState.virusAlertData?.virus?.virusName || gameState.virusAlertData?.virus?.name || 'Virus Desconocido'}
                     </p>
                     <p className="text-[11px] text-white/60 font-medium leading-snug mt-1">
-                      {gameState.virusAlertData.virus.virusDescription || gameState.virusAlertData.virus.description}
+                      {gameState.virusAlertData?.virus?.virusDescription || gameState.virusAlertData?.virus?.description || 'Efecto misterioso...'}
                     </p>
                   </div>
                 </div>

@@ -164,7 +164,7 @@ export function MegaBoardGame({ onExit, localPlayerName, localPlayerAvatar }: Me
   const [eventType, setEventType] = useState<'info' | 'challenge' | 'duel' | 'trivia' | 'roll_again'>('info');
   const [showReward, setShowReward] = useState(false);
   const [rewardData, setRewardData] = useState({ coins: 0, xp: 0, oldLevel: 1, newLevel: 1, streak: 0 });
-  const [setupNames, setSetupNames] = useState<string[]>([localPlayerName, '', '', '']);
+  const [setupNames, setSetupNames] = useState<string[]>([localPlayerName, '']);
   const [triviaQuestion, setTriviaQuestion] = useState<any>(null);
   const [triviaAnswered, setTriviaAnswered] = useState(false);
   const [activeNorma, setActiveNorma] = useState<string | null>(null);
@@ -519,12 +519,9 @@ export function MegaBoardGame({ onExit, localPlayerName, localPlayerAvatar }: Me
   };
 
   // ─── Visible Board Rendering (3D Isometric Path) ─────────────────────────────
-  const VISIBLE_RANGE = 20; // Show tiles around players
+  const VISIBLE_RANGE = 100; // Show full board
   const getVisibleTiles = () => {
-    if (players.length === 0) return board.slice(0, 20);
-    const minPos = Math.max(0, Math.min(...players.map(p => p.position)) - 3);
-    const maxPos = Math.min(99, Math.max(...players.map(p => p.position)) + VISIBLE_RANGE);
-    return board.slice(minPos, maxPos + 1);
+    return board;
   };
 
   // Sorted players for leaderboard
@@ -537,17 +534,17 @@ export function MegaBoardGame({ onExit, localPlayerName, localPlayerAvatar }: Me
   if (gamePhase === 'setup') {
     return (
       <div className="fixed inset-0 z-50 bg-gradient-to-br from-slate-950 via-purple-950/30 to-slate-950 flex items-center justify-center p-4">
-        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full border border-white/10 shadow-2xl">
+        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto">
           <div className="text-center mb-6">
             <div className="text-6xl mb-3">🏰</div>
             <h2 className="text-3xl font-black bg-gradient-to-r from-amber-400 to-rose-500 bg-clip-text text-transparent">MegaBoard 3D</h2>
             <p className="text-sm text-white/50 mt-1">100 casillas · Retos · Trivia · Duelos · Trampas</p>
           </div>
 
-          <div className="space-y-3 mb-6">
+          <div className="space-y-3 mb-4">
             {setupNames.map((name, i) => (
               <div key={i} className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold text-white ${i === 0 ? 'bg-gradient-to-br from-amber-500 to-rose-500' : 'bg-white/10'}`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold text-white shrink-0 ${i === 0 ? 'bg-gradient-to-br from-amber-500 to-rose-500' : 'bg-white/10'}`}>
                   {i === 0 ? '👑' : `${i + 1}`}
                 </div>
                 <input
@@ -558,13 +555,31 @@ export function MegaBoardGame({ onExit, localPlayerName, localPlayerAvatar }: Me
                     newNames[i] = e.target.value;
                     setSetupNames(newNames);
                   }}
-                  placeholder={i === 0 ? localPlayerName : `Jugador ${i + 1} (opcional)`}
+                  placeholder={i === 0 ? localPlayerName : `Jugador ${i + 1}`}
                   className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 focus:border-amber-500/50 focus:outline-none transition-colors"
                   readOnly={i === 0}
                 />
+                {i > 1 && (
+                  <button
+                    onClick={() => setSetupNames(prev => prev.filter((_, idx) => idx !== i))}
+                    className="w-10 h-10 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center hover:bg-red-500/40 transition-colors shrink-0"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
             ))}
           </div>
+
+          {setupNames.length < 10 && (
+            <Button
+              variant="ghost"
+              onClick={() => setSetupNames(prev => [...prev, ''])}
+              className="w-full mb-4 border border-dashed border-white/20 text-white/60 hover:text-white hover:border-white/40"
+            >
+              + Añadir Jugador
+            </Button>
+          )}
 
           <Button onClick={startGame} className="w-full h-14 rounded-xl font-black text-lg bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white shadow-[0_0_20px_rgba(245,158,11,0.4)] border border-amber-400/50">
             🎲 ¡EMPEZAR PARTIDA!
