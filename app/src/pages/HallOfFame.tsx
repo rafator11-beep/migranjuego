@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { BadgeCheck, Crown, Flame, Gift, Monitor, RefreshCw, Shield, Sparkles, Swords, Trophy, Users, Zap } from 'lucide-react';
+import { BadgeCheck, Crown, Flame, Gift, RefreshCw, Shield, Sparkles, Swords, Trophy, Users, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { loadLocalRankings, type PlayerRanking } from '@/utils/localRanking';
 import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
@@ -426,7 +426,6 @@ export function HallOfFame() {
   const [source, setSource] = useState<SourceMode>('global');
   const [boardKey, setBoardKey] = useState<BoardKey>('overall');
   const [loading, setLoading] = useState(true);
-  const [screencastActive, setScreencastActive] = useState(false);
   const [cloudRows, setCloudRows] = useState<SupabaseStatRow[]>([]);
   const [profileRows, setProfileRows] = useState<ProfileRow[]>([]);
   const [localRows, setLocalRows] = useState<PlayerRanking[]>([]);
@@ -519,16 +518,6 @@ export function HallOfFame() {
     return { seasonLeader, streakLeader, badgeLeader, clutchLeader };
   }, [allPremiumPlayers]);
 
-  const handleScreenShare = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
-      setScreencastActive(true);
-      stream.getVideoTracks()[0].onended = () => setScreencastActive(false);
-    } catch {
-      setScreencastActive(false);
-    }
-  };
-
   return (
     <div className="min-h-screen premium-screen pb-28 pt-6 px-4 md:px-6">
       <div className="mx-auto max-w-6xl">
@@ -552,9 +541,6 @@ export function HallOfFame() {
               <div className="flex flex-wrap gap-2 md:justify-end">
                 <Button onClick={refreshData} variant="outline" className="rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10">
                   <RefreshCw className="w-4 h-4 mr-2" /> Actualizar
-                </Button>
-                <Button onClick={handleScreenShare} variant="outline" className={`rounded-2xl border-white/10 ${screencastActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white/5 text-white hover:bg-white/10'}`}>
-                  <Monitor className="w-4 h-4 mr-2" /> {screencastActive ? 'Emitiendo' : 'Compartir'}
                 </Button>
               </div>
             </div>

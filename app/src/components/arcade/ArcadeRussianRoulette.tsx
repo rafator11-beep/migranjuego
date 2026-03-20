@@ -20,6 +20,7 @@ export function ArcadeRussianRoulette({ roomId, playerId, onClose }: ArcadeRussi
 
     const [phase, setPhase] = useState<GamePhase>('waiting_sync');
     const [remotePlayerReady, setRemotePlayerReady] = useState(false);
+    const isBotMatch = roomId.startsWith('bot_');
 
     const [winner, setWinner] = useState<string | null>(null);
 
@@ -36,6 +37,15 @@ export function ArcadeRussianRoulette({ roomId, playerId, onClose }: ArcadeRussi
 
         const channel = supabase.channel(`roulette-${roomId}`);
         channelRef.current = channel;
+
+        if (isBotMatch) {
+            const botReadyTimer = setTimeout(() => {
+                setRemotePlayerReady(true);
+                const starter = Math.random() > 0.5 ? effectivePlayerId : 'remote';
+                startGame(starter, Math.floor(Math.random() * 6));
+            }, 700);
+            return () => clearTimeout(botReadyTimer);
+        }
 
         channel
             .on('broadcast', { event: 'ready' }, ({ payload }) => {
@@ -71,9 +81,9 @@ export function ArcadeRussianRoulette({ roomId, playerId, onClose }: ArcadeRussi
             });
 
         return () => {
-            supabase.removeChannel(channel);
+            if (!isBotMatch) supabase.removeChannel(channel);
         };
-    }, [roomId, effectivePlayerId, currentTurnId]);
+    }, [roomId, effectivePlayerId, currentTurnId, isBotMatch]);
 
     const startGame = (starterId: string, bullet: number) => {
         setWinner(null);
@@ -123,15 +133,39 @@ export function ArcadeRussianRoulette({ roomId, playerId, onClose }: ArcadeRussi
                 setCurrentTurnId('remote');
             }
 
-            channelRef.current?.send({
-                type: 'broadcast',
-                event: 'shoot',
-                payload: { nextTurnId: 'remote', died }
-            });
+            if (!isBotMatch) {
+                channelRef.current?.send({
+                    type: 'broadcast',
+                    event: 'shoot',
+                    payload: { nextTurnId: 'remote', died }
+                });
+            }
 
             setIsShooting(false);
         }, 800);
     };
+
+
+    useEffect(() => {
+        if (!isBotMatch || phase !== 'playing' || currentTurnId === effectivePlayerId || isShooting || winner) return;
+
+        const botTurn = setTimeout(() => {
+            const died = chamber === bulletIndex;
+            setIsShooting(true);
+            setTimeout(() => {
+                if (died) {
+                    setWinner(effectivePlayerId);
+                    setPhase('result');
+                } else {
+                    setChamber((prev) => prev + 1);
+                    setCurrentTurnId(effectivePlayerId);
+                }
+                setIsShooting(false);
+            }, 800);
+        }, 1000 + Math.random() * 700);
+
+        return () => clearTimeout(botTurn);
+    }, [isBotMatch, phase, currentTurnId, isShooting, winner, chamber, bulletIndex, effectivePlayerId]);
 
     return (
         <div className="absolute inset-0 z-50 bg-slate-950 flex flex-col text-white user-select-none overflow-hidden">
@@ -177,9 +211,9 @@ export function ArcadeRussianRoulette({ roomId, playerId, onClose }: ArcadeRussi
 
                     {/* Turn Indicator */}
                     <div className="absolute top-10 flex flex-col items-center gap-2">
-                        <div className={`px-8 py-3 rounded-full border-2 backdrop-blur-md transition-colors ${currentTurnId === localPlayerId ? 'bg-red-900/50 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)]' : 'bg-black/50 border-white/20'}`}>
-                            <span className={`text-lg font-black uppercase tracking-widest ${currentTurnId === localPlayerId ? 'text-white' : 'text-white/50'}`}>
-                                {currentTurnId === localPlayerId ? 'TU TURNO. DISPARA.' : 'TURNO DEL RIVAL...'}
+                        <div className={`px-8 py-3 rounded-full border-2 backdrop-blur-md transition-colors ${currentTurnId === effectivePlayerId ? 'bg-red-900/50 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)]' : 'bg-black/50 border-white/20'}`}>
+                            <span className={`text-lg font-black uppercase tracking-widest ${currentTurnId === effectivePlayerId ? 'text-white' : 'text-white/50'}`}>
+                                {currentTurnId === effectivePlayerId ? 'TU TURNO. DISPARA.' : 'TURNO DEL RIVAL...'}
                             </span>
                         </div>
                         <span className="text-sm font-bold text-red-500/50 uppercase tracking-widest mt-2 bg-black/40 px-3 py-1 rounded-full">Recámara {chamber + 1} de 6</span>
@@ -223,11 +257,11 @@ export function ArcadeRussianRoulette({ roomId, playerId, onClose }: ArcadeRussi
                     {/* Action */}
                     <motion.div
                         className="w-full px-4 mb-4 mt-auto"
-                        animate={{ opacity: currentTurnId === localPlayerId && !isShooting ? 1 : 0.5 }}
+                        animate={{ opacity: currentTurnId === effectivePlayerId && !isShooting ? 1 : 0.5 }}
                     >
                         <Button
                             size="lg"
-                            disabled={isShooting || currentTurnId !== localPlayerId}
+                            disabled={isShooting || currentTurnId !== effectivePlayerId}
                             onClick={handleShoot}
                             className="w-full h-24 rounded-3xl bg-red-700 hover:bg-red-600 text-white font-black text-3xl border-b-8 border-red-900 active:border-b-0 active:translate-y-2 transition-all shadow-xl"
                         >
@@ -254,11 +288,11 @@ export function ArcadeRussianRoulette({ roomId, playerId, onClose }: ArcadeRussi
                         animate={{ scale: 1, opacity: 1 }}
                         className="bg-black/90 p-8 rounded-[40px] backdrop-blur-xl border border-red-900 w-full max-w-md mx-auto text-center shadow-[0_0_50px_rgba(220,38,38,0.3)] z-40"
                     >
-                        <h2 className={`text-5xl font-black mb-2 drop-shadow-md ${winner === localPlayerId ? 'text-emerald-500' : 'text-red-600'}`}>
-                            {winner === localPlayerId ? 'SOBREVIVISTE' : '💀 BANG 💀'}
+                        <h2 className={`text-5xl font-black mb-2 drop-shadow-md ${winner === effectivePlayerId ? 'text-emerald-500' : 'text-red-600'}`}>
+                            {winner === effectivePlayerId ? 'SOBREVIVISTE' : '💀 BANG 💀'}
                         </h2>
                         <p className="text-white/80 mb-8 text-lg font-medium">
-                            {winner === localPlayerId ? 'El rival encontró la bala en la recámara ' + (chamber + 1) + '.' : 'Era la recámara ' + (chamber + 1) + '... Fin del juego.'}
+                            {winner === effectivePlayerId ? 'El rival encontró la bala en la recámara ' + (chamber + 1) + '.' : 'Era la recámara ' + (chamber + 1) + '... Fin del juego.'}
                         </p>
 
                         <Button size="lg" className="w-full h-16 text-xl rounded-2xl font-bold bg-white text-black hover:bg-gray-200 transition-all" onClick={() => setPhase('waiting_sync')}>

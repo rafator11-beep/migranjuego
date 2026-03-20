@@ -23,6 +23,7 @@ export function ArcadeCoinFlip({ roomId, playerId, onClose }: ArcadeCoinFlipProp
 
     const [phase, setPhase] = useState<GamePhase>('waiting_sync');
     const [remotePlayerReady, setRemotePlayerReady] = useState(false);
+    const isBotMatch = roomId.startsWith('bot_');
 
     const [myScore, setMyScore] = useState(0);
     const [remoteScore, setRemoteScore] = useState(0);
@@ -39,6 +40,11 @@ export function ArcadeCoinFlip({ roomId, playerId, onClose }: ArcadeCoinFlipProp
 
         const channel = supabase.channel(`coinflip-${roomId}`);
         channelRef.current = channel;
+
+        if (isBotMatch) {
+            const botReadyTimer = setTimeout(() => setRemotePlayerReady(true), 700);
+            return () => clearTimeout(botReadyTimer);
+        }
 
         channel
             .on('broadcast', { event: 'ready' }, () => {
@@ -67,12 +73,14 @@ export function ArcadeCoinFlip({ roomId, playerId, onClose }: ArcadeCoinFlipProp
             });
 
         return () => {
-            supabase.removeChannel(channel);
+            if (!isBotMatch) supabase.removeChannel(channel);
         };
-    }, [roomId, effectivePlayerId]);
+    }, [roomId, effectivePlayerId, isBotMatch]);
 
     const handleStartSync = () => {
-        channelRef.current?.send({ type: 'broadcast', event: 'start_game' });
+        if (!isBotMatch) {
+            channelRef.current?.send({ type: 'broadcast', event: 'start_game' });
+        }
         startCountdown();
     };
 
@@ -103,11 +111,13 @@ export function ArcadeCoinFlip({ roomId, playerId, onClose }: ArcadeCoinFlipProp
             if (guess === result) {
                 const newScore = myScore + 1;
                 setMyScore(newScore);
-                channelRef.current?.send({
-                    type: 'broadcast',
-                    event: 'score_update',
-                    payload: { playerId: effectivePlayerId, score: newScore }
-                });
+                if (!isBotMatch) {
+                    channelRef.current?.send({
+                        type: 'broadcast',
+                        event: 'score_update',
+                        payload: { playerId: effectivePlayerId, score: newScore }
+                    });
+                }
 
                 if (newScore >= WIN_STREAK_TARGET) {
                     setWinner(effectivePlayerId);
@@ -115,14 +125,35 @@ export function ArcadeCoinFlip({ roomId, playerId, onClose }: ArcadeCoinFlipProp
                 }
             } else {
                 setMyScore(0);
-                channelRef.current?.send({
-                    type: 'broadcast',
-                    event: 'score_update',
-                    payload: { playerId: effectivePlayerId, score: 0 }
-                });
+                if (!isBotMatch) {
+                    channelRef.current?.send({
+                        type: 'broadcast',
+                        event: 'score_update',
+                        payload: { playerId: effectivePlayerId, score: 0 }
+                    });
+                }
             }
         }, 1000);
     };
+
+
+    useEffect(() => {
+        if (!isBotMatch || phase !== 'playing' || isFlipping || winner) return;
+
+        const botTurn = setTimeout(() => {
+            const success = Math.random() > 0.45;
+            setRemoteScore((prev) => {
+                const next = success ? prev + 1 : 0;
+                if (next >= WIN_STREAK_TARGET) {
+                    setWinner('remote');
+                    setPhase('result');
+                }
+                return next;
+            });
+        }, 950 + Math.random() * 900);
+
+        return () => clearTimeout(botTurn);
+    }, [isBotMatch, phase, remoteScore, isFlipping, winner, myScore]);
 
     return (
         <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">

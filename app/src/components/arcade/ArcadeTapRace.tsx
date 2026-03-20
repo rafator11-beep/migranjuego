@@ -20,6 +20,7 @@ export function ArcadeTapRace({ roomId, playerId, onClose }: ArcadeTapRaceProps)
 
     const [phase, setPhase] = useState<GamePhase>('waiting_sync');
     const [remotePlayerReady, setRemotePlayerReady] = useState(false);
+    const isBotMatch = roomId.startsWith('bot_');
     const [timeLeft, setTimeLeft] = useState(10);
 
     const [myScore, setMyScore] = useState(0);
@@ -36,6 +37,14 @@ export function ArcadeTapRace({ roomId, playerId, onClose }: ArcadeTapRaceProps)
 
         const channel = supabase.channel(`taprace-${roomId}`);
         channelRef.current = channel;
+
+        if (isBotMatch) {
+            const botReadyTimer = setTimeout(() => setRemotePlayerReady(true), 700);
+            return () => {
+                clearTimeout(botReadyTimer);
+                if (timerRef.current) clearInterval(timerRef.current);
+            };
+        }
 
         channel
             .on('broadcast', { event: 'ready' }, () => {
@@ -61,12 +70,14 @@ export function ArcadeTapRace({ roomId, playerId, onClose }: ArcadeTapRaceProps)
 
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
-            supabase.removeChannel(channel);
+            if (!isBotMatch) supabase.removeChannel(channel);
         };
-    }, [roomId, effectivePlayerId]);
+    }, [roomId, effectivePlayerId, isBotMatch]);
 
     const handleStartSync = () => {
-        channelRef.current?.send({ type: 'broadcast', event: 'start_game' });
+        if (!isBotMatch) {
+            channelRef.current?.send({ type: 'broadcast', event: 'start_game' });
+        }
         startCountdown();
     };
 
@@ -120,7 +131,7 @@ export function ArcadeTapRace({ roomId, playerId, onClose }: ArcadeTapRaceProps)
             setRemoteScore(prevRemote => { // ensure latest remote score is used mentally
                 const finalRemote = prevRemote;
                 const finalMy = scoreRef.current;
-                if (finalMy > finalRemote) setWinner(localPlayerId!);
+                if (finalMy > finalRemote) setWinner(effectivePlayerId);
                 else if (finalRemote > finalMy) setWinner('remote');
                 else setWinner('tie');
                 return finalRemote;
@@ -145,6 +156,17 @@ export function ArcadeTapRace({ roomId, playerId, onClose }: ArcadeTapRaceProps)
         // Vibrate if on mobile
         if (navigator.vibrate) navigator.vibrate(10);
     };
+
+
+    useEffect(() => {
+        if (!isBotMatch || phase !== 'playing') return;
+
+        const botTimer = setInterval(() => {
+            setRemoteScore((prev) => prev + 1);
+        }, 120 + Math.floor(Math.random() * 80));
+
+        return () => clearInterval(botTimer);
+    }, [isBotMatch, phase]);
 
     // Derived UI values
     const myProgress = Math.min((myScore / 100) * 100, 100);
@@ -248,10 +270,10 @@ export function ArcadeTapRace({ roomId, playerId, onClose }: ArcadeTapRaceProps)
                 <div className="flex-1 flex flex-col items-center justify-center p-4">
                     <div className="bg-black/80 p-8 rounded-[40px] backdrop-blur-xl border border-white/10 w-full max-w-md mx-auto text-center shadow-2xl transform scale-105">
                         <h2 className="text-4xl font-black text-white mb-2">
-                            {winner === localPlayerId ? '🏆 ¡VICTORIA! 🏆' : winner === 'tie' ? '🤝 EMPATE 🤝' : '💀 DERROTA 💀'}
+                            {winner === effectivePlayerId ? '🏆 ¡VICTORIA! 🏆' : winner === 'tie' ? '🤝 EMPATE 🤝' : '💀 DERROTA 💀'}
                         </h2>
                         <p className="text-muted-foreground mb-8 text-lg">
-                            {winner === localPlayerId ? 'Tienes unos dedos relámpago.' : winner === 'tie' ? 'Igualdad máxima.' : 'Te han aplastado...'}
+                            {winner === effectivePlayerId ? 'Tienes unos dedos relámpago.' : winner === 'tie' ? 'Igualdad máxima.' : 'Te han aplastado...'}
                         </p>
 
                         <div className="flex justify-around items-center bg-white/5 p-6 rounded-3xl mb-8">

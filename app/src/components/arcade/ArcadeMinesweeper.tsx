@@ -33,6 +33,7 @@ export function ArcadeMinesweeper({ roomId, playerId, onClose }: ArcadeMinesweep
 
     const [phase, setPhase] = useState<GamePhase>('waiting_sync');
     const [remotePlayerReady, setRemotePlayerReady] = useState(false);
+    const isBotMatch = roomId.startsWith('bot_');
 
     const [winner, setWinner] = useState<string | null>(null);
 
@@ -52,6 +53,15 @@ export function ArcadeMinesweeper({ roomId, playerId, onClose }: ArcadeMinesweep
 
         const channel = supabase.channel(`minesweeper-${roomId}`);
         channelRef.current = channel;
+
+        if (isBotMatch) {
+            const botReadyTimer = setTimeout(() => {
+                setRemotePlayerReady(true);
+                const starter = Math.random() > 0.5 ? effectivePlayerId : 'remote';
+                startGame(starter, generateBombs());
+            }, 700);
+            return () => clearTimeout(botReadyTimer);
+        }
 
         channel
             .on('broadcast', { event: 'ready' }, ({ payload }) => {
@@ -87,9 +97,9 @@ export function ArcadeMinesweeper({ roomId, playerId, onClose }: ArcadeMinesweep
             });
 
         return () => {
-            supabase.removeChannel(channel);
+            if (!isBotMatch) supabase.removeChannel(channel);
         };
-    }, [roomId, effectivePlayerId, currentTurnId]);
+    }, [roomId, effectivePlayerId, currentTurnId, isBotMatch]);
 
     const startGame = (starterId: string, bombs: number[]) => {
         setWinner(null);
@@ -119,11 +129,13 @@ export function ArcadeMinesweeper({ roomId, playerId, onClose }: ArcadeMinesweep
 
         const isBomb = bombIndices.includes(index);
 
-        channelRef.current?.send({
-            type: 'broadcast',
-            event: 'click_cell',
-            payload: { index, playerId: effectivePlayerId }
-        });
+        if (!isBotMatch) {
+            channelRef.current?.send({
+                type: 'broadcast',
+                event: 'click_cell',
+                payload: { index, playerId: effectivePlayerId }
+            });
+        }
 
         if (isBomb) {
             setRevealedCells(prev => ({ ...prev, [index]: 'bomb' }));
@@ -135,6 +147,23 @@ export function ArcadeMinesweeper({ roomId, playerId, onClose }: ArcadeMinesweep
             setCurrentTurnId('remote');
         }
     };
+
+
+    useEffect(() => {
+        if (!isBotMatch || phase !== 'playing' || currentTurnId === effectivePlayerId || winner) return;
+
+        const botMove = setTimeout(() => {
+            const hidden = Array.from({ length: GRID_SIZE }, (_, i) => i).filter((i) => !revealedCells[i]);
+            if (!hidden.length) return;
+            const safe = hidden.filter((i) => !bombIndices.includes(i));
+            const chosen = safe.length && Math.random() > 0.22
+                ? safe[Math.floor(Math.random() * safe.length)]
+                : hidden[Math.floor(Math.random() * hidden.length)];
+            handleRemoteClick(chosen, 'remote');
+        }, 900 + Math.random() * 700);
+
+        return () => clearTimeout(botMove);
+    }, [isBotMatch, phase, currentTurnId, winner, revealedCells, bombIndices, effectivePlayerId]);
 
     return (
         <div className="absolute inset-0 z-50 bg-slate-950 flex flex-col text-white user-select-none">
@@ -170,8 +199,8 @@ export function ArcadeMinesweeper({ roomId, playerId, onClose }: ArcadeMinesweep
                         </div>
 
                         <div className="text-center w-1/3 flex flex-col items-center gap-1">
-                            <span className={`px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest ${currentTurnId === localPlayerId ? 'bg-orange-500 text-black shadow-[0_0_15px_rgba(249,115,22,0.8)]' : 'bg-white/10 text-white/50'}`}>
-                                {currentTurnId === localPlayerId ? 'TU TURNO' : 'RIVAL'}
+                            <span className={`px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest ${currentTurnId === effectivePlayerId ? 'bg-orange-500 text-black shadow-[0_0_15px_rgba(249,115,22,0.8)]' : 'bg-white/10 text-white/50'}`}>
+                                {currentTurnId === effectivePlayerId ? 'TU TURNO' : 'RIVAL'}
                             </span>
                             <span className="text-[10px] text-orange-500/50 uppercase">Toca una casilla</span>
                         </div>
@@ -190,7 +219,7 @@ export function ArcadeMinesweeper({ roomId, playerId, onClose }: ArcadeMinesweep
                             return (
                                 <button
                                     key={i}
-                                    disabled={currentTurnId !== localPlayerId || state !== 'hidden'}
+                                    disabled={currentTurnId !== effectivePlayerId || state !== 'hidden'}
                                     onClick={() => handleCellClick(i)}
                                     className={`rounded-lg relative overflow-hidden transition-all duration-300
                                         ${state === 'hidden' ? 'bg-slate-700 hover:bg-slate-600 border border-slate-600 border-b-4 active:border-b active:translate-y-1 cursor-pointer' : ''}
@@ -230,11 +259,11 @@ export function ArcadeMinesweeper({ roomId, playerId, onClose }: ArcadeMinesweep
                         animate={{ scale: 1, opacity: 1 }}
                         className="bg-black/90 p-8 rounded-[40px] backdrop-blur-xl border border-orange-900 w-full max-w-md mx-auto text-center shadow-[0_0_50px_rgba(249,115,22,0.3)] z-10"
                     >
-                        <h2 className={`text-4xl md:text-5xl font-black mb-4 drop-shadow-md ${winner === localPlayerId ? 'text-emerald-500' : 'text-red-600'}`}>
-                            {winner === localPlayerId ? '¡SOBREVIVISTE!' : '💥 BOOM 💥'}
+                        <h2 className={`text-4xl md:text-5xl font-black mb-4 drop-shadow-md ${winner === effectivePlayerId ? 'text-emerald-500' : 'text-red-600'}`}>
+                            {winner === effectivePlayerId ? '¡SOBREVIVISTE!' : '💥 BOOM 💥'}
                         </h2>
                         <p className="text-white/80 mb-8 text-lg font-medium">
-                            {winner === localPlayerId ? 'Tu rival pisó una mina. Eres un experto.' : 'Has volado por los aires... ¡Ten más cuidado!'}
+                            {winner === effectivePlayerId ? 'Tu rival pisó una mina. Eres un experto.' : 'Has volado por los aires... ¡Ten más cuidado!'}
                         </p>
 
                         <Button size="lg" className="w-full h-16 text-xl rounded-2xl font-bold bg-white text-black hover:bg-gray-200 transition-all" onClick={() => setPhase('waiting_sync')}>

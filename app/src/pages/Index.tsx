@@ -1,6 +1,6 @@
 import { useState, useEffect, Suspense, lazy } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRight, Gamepad2, Globe, LayoutGrid, ShieldCheck, Sparkles, Smartphone, Users2 } from 'lucide-react';
+import { Globe, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { GameProvider, useGameContext } from '@/contexts/GameContext';
@@ -16,16 +16,14 @@ import { GlobalPresence } from '@/components/auth/GlobalPresence';
 import { WelcomeScreen } from '@/components/auth/WelcomeScreen';
 import { BottomNav } from '@/components/layout/BottomNav';
 type AppTab = 'inicio' | 'perfiles' | 'jugar' | 'historial' | 'ajustes' | 'arcade' | 'hall';
-import { VideoChatComponent } from '@/components/multiplayer/VideoChatComponent';
 import { GameHistory } from '@/pages/GameHistory';
 import { AppSettings } from '@/pages/AppSettings';
 import { ArcadeTab } from '@/components/arcade/ArcadeTab';
 import { LobbyScreen } from '@/components/multiplayer/LobbyScreen';
 import { ChatComponent } from '@/components/multiplayer/ChatComponent';
+import { DailyVideoProvider } from '@/components/multiplayer/DailyVideoProvider';
 import { GameMode, GAME_MODES, TabId, PlayMode } from '@/types/game';
 import { supabase } from '@/integrations/supabase/client';
-import { DailyVideoProvider, useDailyVideo, createDailyRoom } from '@/components/multiplayer/DailyVideoProvider';
-import { FloatingVideoBubbles } from '@/components/multiplayer/FloatingVideoBubbles';
 import {
   Dialog,
   DialogContent,
@@ -68,36 +66,7 @@ function GameAppInner() {
 
   // Game Context
   const { createGame, setGameId, players, localPlayerId, gameId, addPlayer, game, createTeam, assignPlayerToTeam, setLocalPlayerId } = useGameContext();
-  const { joinRoom, leaveRoom, isJoined } = useDailyVideo();
 
-  // Auto-join Daily.co video when online (roomId exists)
-  useEffect(() => {
-    if (!roomId) return;
-    const playerName = pendingPlayer?.name || players.find(p => p.id === localPlayerId)?.name || 'Jugador';
-
-    const joinVideo = async () => {
-      if (isJoined) {
-        console.log('[Daily] Already joined, skipping');
-        return;
-      }
-      try {
-        const dailyRoomName = `game-${roomId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 30)}`;
-        console.log('[Daily] Creating room:', dailyRoomName, 'for player:', playerName);
-        const room = await createDailyRoom(dailyRoomName);
-        console.log('[Daily] Room response:', room);
-        if (room?.url) {
-          console.log('[Daily] Joining room URL:', room.url);
-          await joinRoom(room.url, playerName);
-          console.log('[Daily] Joined successfully!');
-        } else {
-          console.error('[Daily] No room URL returned');
-        }
-      } catch (err) {
-        console.error('[Daily] Error joining video:', err);
-      }
-    };
-    joinVideo();
-  }, [roomId, isJoined, pendingPlayer, players, localPlayerId, joinRoom]);
 
   // Auto-detect Join URL
   useEffect(() => {
@@ -557,143 +526,55 @@ function GameAppInner() {
               {activeTab === 'inicio' && (
                 <>
                   <div className="app-shell pb-4">
-                    <div className="surface-panel relative overflow-hidden p-5 md:p-6">
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.18),transparent_32%),radial-gradient(circle_at_top_right,hsl(var(--accent)/0.14),transparent_24%),linear-gradient(180deg,transparent,rgba(255,255,255,0.01))]" />
-
-                      <div className="relative grid gap-4 xl:grid-cols-[1.45fr_0.85fr]">
-                        <div className="space-y-5">
-                          <div className="space-y-3">
-                            <span className="section-badge">
-                              <Sparkles className="mr-2 h-3.5 w-3.5" />
-                              Selecciona tu experiencia
-                            </span>
-                            <div>
-                              <h1 className="text-3xl font-black tracking-tight text-white md:text-5xl">
-                                Una app más <span className="premium-title">clara, premium y móvil</span>
-                              </h1>
-                              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
-                                Inicio más ordenado, navegación más limpia y acceso directo a los modos con mejor jerarquía visual.
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap gap-2.5">
-                            <span className="premium-chip text-white/90">
-                              <LayoutGrid className="h-3.5 w-3.5 text-[hsl(var(--accent))]" />
-                              {GAME_MODES.length} modos
-                            </span>
-                            <span className="premium-chip text-white/90">
-                              <Smartphone className="h-3.5 w-3.5 text-[hsl(var(--accent))]" />
-                              Mejor móvil
-                            </span>
-                            <span className="premium-chip text-white/90">
-                              <ShieldCheck className="h-3.5 w-3.5 text-[hsl(var(--accent))]" />
-                              UI más clara
-                            </span>
-                          </div>
-
-                          <div className="grid gap-3 sm:grid-cols-3">
-                            <button
-                              onClick={() => {
-                                setMainTab('fiesta');
-                                setActiveTab('inicio');
-                              }}
-                              className="premium-panel-soft rounded-[22px] p-4 text-left transition hover:-translate-y-0.5 hover:border-white/15"
-                            >
-                              <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-white">🎉</div>
-                              <p className="text-sm font-bold text-white">Modos fiesta</p>
-                              <p className="mt-1 text-xs leading-5 text-muted-foreground">Retos sociales y partidas rápidas para grupo.</p>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setMainTab('juego');
-                                setActiveTab('inicio');
-                              }}
-                              className="premium-panel-soft rounded-[22px] p-4 text-left transition hover:-translate-y-0.5 hover:border-white/15"
-                            >
-                              <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-white">🏆</div>
-                              <p className="text-sm font-bold text-white">Competitivo</p>
-                              <p className="mt-1 text-xs leading-5 text-muted-foreground">Poker, parchís y juegos de duelo mejor presentados.</p>
-                            </button>
-
-                            <button
-                              onClick={() => setScreen('lobby')}
-                              className="premium-panel-soft rounded-[22px] p-4 text-left transition hover:-translate-y-0.5 hover:border-white/15"
-                            >
-                              <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-white">🌐</div>
-                              <p className="text-sm font-bold text-white">Entrar a sala</p>
-                              <p className="mt-1 text-xs leading-5 text-muted-foreground">Acceso directo para crear o unirte con código.</p>
-                            </button>
-                          </div>
+                    <div className="surface-panel p-4 md:p-5">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div className="min-w-0">
+                          <h1 className="text-xl font-black text-white md:text-2xl">Elige modo</h1>
+                          
                         </div>
 
-                        <div className="space-y-4">
-                          <div className="surface-soft rounded-[26px] p-4">
-                            <div className="flex items-center gap-3">
-                              <div className="rounded-2xl bg-[hsl(var(--primary)/0.16)] p-3 text-[hsl(var(--accent))]">
-                                <Gamepad2 className="h-5 w-5" />
-                              </div>
+                        {roomId ? (
+                          <div className="flex w-full flex-col gap-2 rounded-[20px] border border-[hsl(var(--primary)/0.25)] bg-[linear-gradient(135deg,hsl(var(--primary)/0.14),transparent)] p-3 md:w-auto md:min-w-[250px]">
+                            <div className="flex items-center justify-between gap-3">
                               <div>
-                                <p className="text-sm font-semibold text-white">Acceso rápido</p>
-                                <p className="text-xs text-muted-foreground">Explora modos, crea sala o entra a competir con menos pasos.</p>
+                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[hsl(var(--accent))]">Sala activa</p>
+                                <p className="mt-1 text-2xl font-black tracking-[0.2em] text-white md:text-3xl">{roomId}</p>
                               </div>
-                            </div>
-
-                            <div className="mt-4 grid gap-3">
-                              <div className="premium-stat">
-                                <div className="flex items-center gap-2">
-                                  <Globe className="h-4 w-4 text-[hsl(var(--accent))]" />
-                                  <p className="text-sm font-bold text-white">Local u online</p>
-                                </div>
-                                <p className="mt-2 text-sm text-muted-foreground">Ahora el flujo separa mejor el tipo de partida y el modo de juego.</p>
-                              </div>
-                              <div className="premium-stat">
-                                <div className="flex items-center gap-2">
-                                  <Users2 className="h-4 w-4 text-[hsl(var(--accent))]" />
-                                  <p className="text-sm font-bold text-white">Listo para grupo</p>
-                                </div>
-                                <p className="mt-2 text-sm text-muted-foreground">Botones grandes, paneles más limpios y lectura más cómoda al pasar el móvil.</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {roomId ? (
-                            <div className="rounded-[26px] border border-[hsl(var(--primary)/0.25)] bg-[linear-gradient(135deg,hsl(var(--primary)/0.14),transparent)] p-4">
-                              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[hsl(var(--accent))]">Sala activa</p>
-                              <p className="mt-2 text-4xl font-black tracking-[0.24em] text-white">{roomId}</p>
-                              <p className="mt-2 text-sm text-muted-foreground">Comparte el código y luego elige el juego que quieras iniciar.</p>
                               <Button
                                 variant="outline"
-                                className="mt-4 w-full text-red-300 hover:text-red-200"
+                                className="shrink-0 text-red-300 hover:text-red-200"
                                 onClick={() => {
                                   setRoomId(null);
                                   setIsHost(false);
                                 }}
                               >
-                                Cancelar sala
+                                Cerrar
                               </Button>
                             </div>
-                          ) : (
-                            <button
+                            <Button
+                              variant="secondary"
+                              className="w-full"
                               onClick={() => setScreen('lobby')}
-                              className="group rounded-[26px] border border-white/10 bg-white/[0.03] p-4 text-left transition hover:border-white/15 hover:bg-white/[0.05]"
                             >
-                              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[hsl(var(--accent))]">Nuevo acceso</p>
-                              <p className="mt-2 text-lg font-black text-white">Crear o unirte a una sala</p>
-                              <p className="mt-2 text-sm text-muted-foreground">Ideal para entrar directamente al modo online sin pasar por más pantallas.</p>
-                              <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-white transition-transform group-hover:translate-x-1">
-                                Abrir lobby <ArrowRight className="h-4 w-4" />
-                              </span>
-                            </button>
-                          )}
-                        </div>
+                              Abrir lobby
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="secondary"
+                            className="w-full md:w-auto"
+                            onClick={() => setScreen('lobby')}
+                          >
+                            <Globe className="mr-2 h-4 w-4" />
+                            Crear o unirte a sala
+                          </Button>
+                        )}
                       </div>
 
-                      <div className="relative mt-5 inline-flex w-full max-w-[440px] rounded-[24px] border border-white/10 bg-white/[0.04] p-1.5">
+                      <div className="mt-4 inline-flex w-full max-w-[380px] rounded-[20px] border border-white/10 bg-white/[0.04] p-1">
                         <button
                           onClick={() => setMainTab('fiesta')}
-                          className={`flex-1 rounded-[18px] px-5 py-3 text-sm font-semibold transition ${mainTab === 'fiesta'
+                          className={`flex-1 rounded-[16px] px-4 py-2.5 text-sm font-semibold transition ${mainTab === 'fiesta'
                             ? 'bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--primary-strong)))] text-white shadow-[0_14px_30px_-18px_hsl(var(--primary)/0.95)]'
                             : 'text-muted-foreground hover:text-white'}`}
                         >
@@ -701,7 +582,7 @@ function GameAppInner() {
                         </button>
                         <button
                           onClick={() => setMainTab('juego')}
-                          className={`flex-1 rounded-[18px] px-5 py-3 text-sm font-semibold transition ${mainTab === 'juego'
+                          className={`flex-1 rounded-[16px] px-4 py-2.5 text-sm font-semibold transition ${mainTab === 'juego'
                             ? 'bg-[linear-gradient(135deg,hsl(var(--accent)),hsl(var(--primary)))] text-[hsl(var(--accent-foreground))] shadow-[0_14px_30px_-18px_hsl(var(--accent)/0.95)]'
                             : 'text-muted-foreground hover:text-white'}`}
                         >
@@ -759,12 +640,12 @@ function GameAppInner() {
               {selectedModeForOptions && GAME_MODES.find(m => m.id === selectedModeForOptions)?.icon}
               <span>{selectedModeForOptions && GAME_MODES.find(m => m.id === selectedModeForOptions)?.name}</span>
             </DialogTitle>
-            <DialogDescription id="mode-options-desc">Elige el formato que mejor encaja con tu grupo.</DialogDescription>
+            <DialogDescription id="mode-options-desc">Elige cómo vais a jugar.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4 sm:grid-cols-2">
             <Button
               variant="outline"
-              className="group h-auto min-h-[220px] flex-col items-start gap-4 rounded-[28px] border-white/10 bg-white/[0.03] p-5 text-left hover:border-primary/40 hover:bg-white/[0.06] transition-all"
+              className="group h-auto min-h-[160px] flex-col items-start gap-3 rounded-[24px] border-white/10 bg-white/[0.03] p-4 text-left hover:border-primary/40 hover:bg-white/[0.06] transition-all"
               onClick={() => confirmModeSelection(false)}
             >
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary text-white group-hover:scale-105 transition-transform">
@@ -772,17 +653,13 @@ function GameAppInner() {
               </div>
               <div>
                 <p className="text-lg font-black text-white">Mismo dispositivo</p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">Ideal para jugar pasando el móvil. Menos pasos, arranque rápido y pantalla optimizada para grupos presenciales.</p>
-              </div>
-              <div className="mt-auto flex flex-wrap gap-2">
-                <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs text-muted-foreground">Rápido</span>
-                <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs text-muted-foreground">Sin código</span>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">Pasando el móvil.</p>
               </div>
             </Button>
 
             <Button
               variant="outline"
-              className="group h-auto min-h-[220px] flex-col items-start gap-4 rounded-[28px] border-white/10 bg-white/[0.03] p-5 text-left hover:border-[hsl(var(--accent)/0.4)] hover:bg-white/[0.06] transition-all"
+              className="group h-auto min-h-[160px] flex-col items-start gap-3 rounded-[24px] border-white/10 bg-white/[0.03] p-4 text-left hover:border-[hsl(var(--accent)/0.4)] hover:bg-white/[0.06] transition-all"
               onClick={() => confirmModeSelection(true)}
             >
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-500/20 text-purple-400 group-hover:scale-105 transition-transform">
@@ -790,11 +667,7 @@ function GameAppInner() {
               </div>
               <div>
                 <p className="text-lg font-black text-white">Con sala online</p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">Cada persona entra desde su móvil con código. Mejor para Poker, Parchís y partidas con videollamada o grupo remoto.</p>
-              </div>
-              <div className="mt-auto flex flex-wrap gap-2">
-                <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs text-muted-foreground">Código</span>
-                <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs text-muted-foreground">Multimóvil</span>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">Cada persona entra desde su móvil con código.</p>
               </div>
             </Button>
           </div>
@@ -806,13 +679,6 @@ function GameAppInner() {
         <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
       )}
 
-      {/* Global Video Chat - Persists across screens */}
-      {roomId && localPlayerId && (
-        <VideoChatComponent
-          roomId={roomId}
-          playerId={localPlayerId}
-        />
-      )}
 
       {/* Global Chat Bubble - Always visible */}
       <ChatComponent
@@ -824,8 +690,6 @@ function GameAppInner() {
           || (roomId ? (isHost ? 'Anfitrión' : 'Invitado') : `Usuario ${localPlayerId?.slice(0, 4) || Math.floor(Math.random() * 9000) + 1000}`)
         }
       />
-      {/* Floating Video Bubbles (online only) */}
-      {roomId && <FloatingVideoBubbles />}
     </>
   );
 }

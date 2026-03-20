@@ -229,7 +229,7 @@ export function CardDisplay({ content, type = 'common', onClick, gameMode, playe
                                         );
                                     }
 
-                                    const sanitized = sanitizeCardText(content);
+                                    const sanitized = sanitizeCardText(content) || 'Siguiente carta';
                                     return (
                                         <div className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tighter balance-text text-white w-full drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)] leading-[1.1]">
                                             {processDrinkingMultiplier(sanitized, round)}

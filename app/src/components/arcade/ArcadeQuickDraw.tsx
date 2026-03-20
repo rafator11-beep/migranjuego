@@ -20,6 +20,7 @@ export function ArcadeQuickDraw({ roomId, playerId, onClose }: ArcadeQuickDrawPr
 
     const [phase, setPhase] = useState<GamePhase>('waiting_sync');
     const [remotePlayerReady, setRemotePlayerReady] = useState(false);
+    const isBotMatch = roomId.startsWith('bot_');
     const [myReactionTime, setMyReactionTime] = useState<number | null>(null);
     const [remoteReactionTime, setRemoteReactionTime] = useState<number | null>(null);
     const [winner, setWinner] = useState<string | null>(null);
@@ -34,6 +35,14 @@ export function ArcadeQuickDraw({ roomId, playerId, onClose }: ArcadeQuickDrawPr
 
         const channel = supabase.channel(`quickdraw-${roomId}`);
         channelRef.current = channel;
+
+        if (isBotMatch) {
+            const botReadyTimer = setTimeout(() => setRemotePlayerReady(true), 700);
+            return () => {
+                clearTimeout(botReadyTimer);
+                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            };
+        }
 
         channel
             .on('broadcast', { event: 'ready' }, () => {
@@ -66,7 +75,7 @@ export function ArcadeQuickDraw({ roomId, playerId, onClose }: ArcadeQuickDrawPr
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
             supabase.removeChannel(channel);
         };
-    }, [roomId, effectivePlayerId]);
+    }, [roomId, effectivePlayerId, isBotMatch]);
 
     useEffect(() => {
         // If both are ready (my component mounted AND remote is ready), the "host" starts it.
@@ -75,7 +84,9 @@ export function ArcadeQuickDraw({ roomId, playerId, onClose }: ArcadeQuickDrawPr
     }, [remotePlayerReady]);
 
     const handleStartSync = () => {
-        channelRef.current?.send({ type: 'broadcast', event: 'start_sequence' });
+        if (!isBotMatch) {
+            channelRef.current?.send({ type: 'broadcast', event: 'start_sequence' });
+        }
         startSequence();
     };
 
@@ -93,6 +104,18 @@ export function ArcadeQuickDraw({ roomId, playerId, onClose }: ArcadeQuickDrawPr
             drawStartTimeRef.current = Date.now();
         }, randomDelay);
     };
+
+
+    useEffect(() => {
+        if (!isBotMatch || phase !== 'draw' || myReactionTime !== null || remoteReactionTime !== null) return;
+
+        const timer = setTimeout(() => {
+            const botTime = 220 + Math.floor(Math.random() * 280);
+            setRemoteReactionTime(botTime);
+        }, 260 + Math.random() * 320);
+
+        return () => clearTimeout(timer);
+    }, [isBotMatch, phase, myReactionTime, remoteReactionTime]);
 
     const handleTap = () => {
         if (phase === 'steady') {

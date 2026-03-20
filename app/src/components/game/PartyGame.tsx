@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Users, Trophy, AlertCircle, Video, VideoOff, Copy, Crown, Plus, Minus, Eye, EyeOff, Zap, Flame, Ghost, ShieldAlert, Dice5, UserPlus, Globe, History, Play, Trash2, UserCheck, UserX, X, Camera, Monitor } from 'lucide-react';
+import { ArrowLeft, Users, Trophy, AlertCircle, Video, VideoOff, Copy, Crown, Plus, Minus, Eye, EyeOff, Zap, Flame, Ghost, ShieldAlert, Dice5, UserPlus, Globe, History, Play, Trash2, UserCheck, UserX, X, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import {
@@ -163,22 +163,6 @@ export function PartyGame({ mode, onExit, isMultiplayer = false, isHost = false,
   };
 
   const { game } = useGame(roomId);
-
-  // Screen Casting
-  const [screencastActive, setScreencastActive] = useState(false);
-  const handleScreenShare = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-      setScreencastActive(true);
-      toast.success('¡Pantalla compartida! Proyecta a tu TV.');
-      stream.getVideoTracks()[0].onended = () => {
-        setScreencastActive(false);
-        toast.info('Se detuvo la pantalla compartida.');
-      };
-    } catch {
-      toast.error('No se pudo compartir pantalla.');
-    }
-  };
 
   // Video Chat Toggle
   const [showVideo, setShowVideo] = useState(true); // Manual Toggle - Default TRUE
@@ -824,16 +808,6 @@ export function PartyGame({ mode, onExit, isMultiplayer = false, isHost = false,
             }
             }}>
             <ArrowLeft className="h-6 w-6 text-white/80" />
-            </Button>
-            
-            <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={handleScreenShare} 
-                className={`h-9 rounded-xl px-3 font-bold text-[10px] gap-1.5 transition-all ${screencastActive ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-white/5 text-white/50 border border-white/10'}`}
-            >
-                {screencastActive ? <Monitor className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
-                {screencastActive ? 'EMITIENDO' : 'COMPARTIR TV'}
             </Button>
         </div>
 

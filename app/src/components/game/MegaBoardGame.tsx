@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LogOut, Trophy, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Crown, ArrowRight, Sparkles, Zap, Flame, Target, Gift, Skull, HelpCircle, Star, Monitor } from 'lucide-react';
+import { LogOut, Trophy, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { RewardPopup } from './RewardPopup';
@@ -57,10 +57,10 @@ const MAX_TILE_AVATARS = 4;
 // Generate 100-tile board with varied tile distribution
 function generateBoard(): BoardTile[] {
   const tileSequence: TileType[] = [
-    'challenge', 'drink', 'trivia', 'challenge', 'random',
-    'duel', 'challenge', 'bonus', 'drink', 'trivia',
-    'trap', 'challenge', 'mimica', 'drink', 'challenge',
-    'norma', 'trivia', 'duel', 'challenge', 'drink',
+    'drink', 'challenge', 'drink', 'drink', 'trivia',
+    'drink', 'duel', 'drink', 'bonus', 'drink',
+    'drink', 'mimica', 'drink', 'drink', 'random',
+    'drink', 'norma', 'drink', 'trap', 'drink',
   ];
 
   const tiles: BoardTile[] = [{ id: 0, type: 'start', ...TILE_CONFIG.start }];
@@ -89,21 +89,26 @@ function generateBoard(): BoardTile[] {
 
 // ─── Drink/Party Content for tiles ────────────────────────────────────────────
 const DRINK_EVENTS = [
-  "🍻 ¡Brindis grupal! Todos beben un trago.",
-  "🍺 El jugador reparte 3 tragos a quien quiera.",
-  "🥂 Cascada: el jugador empieza a beber y todos le siguen. Nadie para hasta que pare el de su derecha.",
-  "🍹 El jugador inventa un cóctel con nombre ridículo. Si a alguien le gusta el nombre, bebe.",
-  "🍻 Duelo de tragos: el jugador elige a alguien. El primero en terminar, reparte 5 tragos.",
-  "🍺 El jugador da un trago por cada vocal en su nombre.",
-  "🥤 Todos los que tengan el móvil en la mano, beben.",
-  "🍻 El jugador cuenta un chiste. Si nadie se ríe, bebe doble.",
-  "🍺 El más alto bebe. Si hay empate, beben los dos.",
-  "🥂 El jugador brinda por algo épico. Si el grupo no aplaude, bebe.",
-  "🍻 Todos los que hayan bebido Ya en esta partida, vuelven a beber.",
-  "🍺 Modo Cascada Inversa: el último jugador empieza y sube hasta el primero.",
-  "🥂 El jugador elige: ¿verdad o trago? Si elige verdad, responde la pregunta más comprometida del grupo.",
-  "🍹 Ronda de shots! Todos beben a la vez.",
-  "🍻 El jugador que estornude primero, reparte 3 tragos extra.",
+  "🍻 Todos beben 2 tragos.",
+  "🍺 El jugador actual bebe 2 tragos y reparte 2 más.",
+  "🥂 Brindis general: nadie se libra, todos 1 trago.",
+  "🍹 Elige a dos personas para que beban 2 tragos cada una.",
+  "🍺 El de tu izquierda y tú bebéis 2 tragos.",
+  "🥃 Si no haces un mini discurso, bebes 3 tragos.",
+  "🍻 Ronda rápida: todos 2 tragos seguidos.",
+  "🍺 Reparte 4 tragos como quieras.",
+  "🥂 El último en levantar el vaso bebe 3 tragos.",
+  "🍹 Tu eliges: bebes 3 o repartes 5.",
+  "🍺 El más alto, el más bajo y tú bebéis 2 tragos.",
+  "🍻 Cascada: empieza el jugador actual y todos le siguen.",
+  "🥃 Fondo corto o 4 tragos. Tú decides.",
+  "🍺 Si te ríes antes de acabar la ronda, bebes 2 más. Empieza bebiendo 2.",
+  "👑 El jugador actual reparte 6 tragos entre el grupo.",
+  "🍻 Todos los que lleven móvil cerca beben 2 tragos.",
+  "🥂 Choque de vasos y 2 tragos cada uno.",
+  "🍺 Elige a alguien para un duelo: quien pierda bebe 4 tragos.",
+  "🍹 Ronda de castigo: todos 1 trago y tú 2 extra.",
+  "🥃 El grupo decide si bebes 2 o 4 tragos.",
 ];
 
 const BONUS_EVENTS = [
@@ -170,23 +175,7 @@ export function MegaBoardGame({ onExit, localPlayerName, localPlayerAvatar }: Me
   const [triviaQuestion, setTriviaQuestion] = useState<any>(null);
   const [triviaAnswered, setTriviaAnswered] = useState(false);
   const [activeNorma, setActiveNorma] = useState<string | null>(null);
-  const [screencastActive, setScreencastActive] = useState(false);
   const { updateMultiplePlayers } = useRanking();
-
-  // Chromecast / Screen Share
-  const handleScreenShare = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-      setScreencastActive(true);
-      toast.success('¡Pantalla compartida! Proyecta a tu TV.');
-      stream.getVideoTracks()[0].onended = () => {
-        setScreencastActive(false);
-        toast.info('Se detuvo la pantalla compartida.');
-      };
-    } catch {
-      toast.error('No se pudo compartir pantalla.');
-    }
-  };
 
   const currentPlayer = players[currentPlayerIdx];
 
@@ -539,8 +528,8 @@ export function MegaBoardGame({ onExit, localPlayerName, localPlayerAvatar }: Me
         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="premium-panel rounded-[30px] p-8 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
           <div className="text-center mb-6">
             <div className="text-6xl mb-3">🏰</div>
-            <h2 className="text-3xl font-black premium-title">MegaBoard Premium</h2>
-            <p className="text-sm text-white/50 mt-1">100 casillas · Retos · Trivia · Duelos · Trampas · hasta 20 jugadores</p>
+            <h2 className="text-3xl font-black premium-title">MegaBoard</h2>
+            <p className="text-sm text-white/50 mt-1">100 casillas · más tragos · retos · trivia · hasta 20 jugadores</p>
           </div>
 
           <div className="mb-3 flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/5 px-4 py-3 text-xs text-white/60">
@@ -605,7 +594,7 @@ export function MegaBoardGame({ onExit, localPlayerName, localPlayerAvatar }: Me
       {/* Header */}
       <div className="p-3 md:p-5 shrink-0"><div className="premium-panel rounded-[28px] px-4 py-4 md:px-5 md:py-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg md:text-xl font-black premium-title">🏰 MegaBoard Premium</h2>
+          <h2 className="text-lg md:text-xl font-black premium-title">🏰 MegaBoard</h2>
           {activeNorma && (
             <div className="hidden md:flex items-center gap-1 bg-orange-500/20 border border-orange-500/30 rounded-full px-3 py-1 text-xs text-orange-300 max-w-[200px] truncate">
               📜 {activeNorma}
@@ -613,9 +602,6 @@ export function MegaBoardGame({ onExit, localPlayerName, localPlayerAvatar }: Me
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={handleScreenShare} className={`text-xs ${screencastActive ? 'text-green-400' : 'text-white/50'}`}>
-            <Monitor className="w-4 h-4 mr-1" /> {screencastActive ? 'Emitiendo' : 'Compartir'}
-          </Button>
           <Button variant="destructive" size="sm" onClick={onExit} className="rounded-xl font-bold">
             <LogOut className="w-4 h-4 mr-1" /> Salir
           </Button>
@@ -653,8 +639,8 @@ export function MegaBoardGame({ onExit, localPlayerName, localPlayerAvatar }: Me
           </div>
 
           {/* 3D Isometric Board */}
-          <div className="relative rounded-[28px] border border-white/8 bg-white/[0.03] p-2 md:p-4 overflow-hidden" style={{ perspective: '800px' }}>
-            <div className="grid grid-cols-5 md:grid-cols-10 gap-1.5 md:gap-2.5" style={{ transform: 'rotateX(13deg) rotateZ(-2deg)', transformStyle: 'preserve-3d' }}>
+          <div className="relative rounded-[28px] border border-white/8 bg-white/[0.03] p-3 md:p-4 overflow-auto">
+            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2.5 md:gap-3">
               {getVisibleTiles().map((tile) => {
                 const playersOnTile = players.filter(p => p.position === tile.id);
                 const isCurrentTile = currentPlayer && currentPlayer.position === tile.id;
@@ -668,16 +654,16 @@ export function MegaBoardGame({ onExit, localPlayerName, localPlayerAvatar }: Me
                     className={`relative w-full aspect-square rounded-2xl border flex flex-col items-center justify-center text-center backdrop-blur-[2px]
                       ${isCurrentTile ? 'ring-2 ring-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.5)]' : ''}
                       bg-gradient-to-br ${tile.color} border-white/20 shadow-lg`}
-                    style={{ transform: 'translateZ(4px)', transformStyle: 'preserve-3d' }}
+
                   >
                     {/* Tile number */}
-                    <span className="absolute top-0.5 left-1 text-[8px] font-bold text-white/50">{tile.id}</span>
-                    <span className="text-lg md:text-xl">{tile.emoji}</span>
-                    <span className="text-[7px] md:text-[9px] font-bold text-white/80 leading-tight">{tile.label}</span>
+                    <span className="absolute top-1 left-1.5 text-[10px] font-bold text-white/60">{tile.id}</span>
+                    <span className="text-2xl md:text-3xl">{tile.emoji}</span>
+                    <span className="px-1 text-[10px] md:text-[11px] font-bold text-white/90 leading-tight">{tile.label}</span>
 
                     {/* Player Avatars on tile */}
                     {playersOnTile.length > 0 && (
-                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex items-center gap-0.5">
+                      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-0.5">
                         {playersOnTile.slice(0, MAX_TILE_AVATARS).map(p => (
                           <div key={p.id} className={`w-5 h-5 md:w-6 md:h-6 rounded-full border-2 overflow-hidden ${p.id === currentPlayer?.id ? 'border-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.6)]' : 'border-white/50'}`}>
                             {p.avatarUrl ? (

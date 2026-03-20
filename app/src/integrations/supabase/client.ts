@@ -2,35 +2,150 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+type QueryResult<T = any> = Promise<{ data: T; error: null | Error }>;
 
-// If env vars are missing (common on first Netlify deploy), we keep the app usable offline.
+type MockChannel = {
+  on: (...args: any[]) => MockChannel;
+  subscribe: (callback?: (status: string) => void) => MockChannel;
+  track: (...args: any[]) => Promise<{ error: null }>;
+  send: (...args: any[]) => Promise<{ error: null }>;
+  presenceState: () => Record<string, any[]>;
+  unsubscribe: () => void;
+};
+
+class MockQueryBuilder {
+  private result: { data: any; error: null | Error };
+
+  constructor(data: any = null, error: null | Error = null) {
+    this.result = { data, error };
+  }
+
+  select() { return this; }
+  insert() { return this; }
+  upsert() { return this; }
+  update() { return this; }
+  delete() { return this; }
+  eq() { return this; }
+  neq() { return this; }
+  not() { return this; }
+  ilike() { return this; }
+  like() { return this; }
+  gt() { return this; }
+  gte() { return this; }
+  lt() { return this; }
+  lte() { return this; }
+  in() { return this; }
+  is() { return this; }
+  contains() { return this; }
+  overlap() { return this; }
+  order() { return this; }
+  limit() { return this; }
+  range() { return this; }
+  or() { return this; }
+  match() { return this; }
+  maybeSingle() { return Promise.resolve(this.result); }
+  single() { return Promise.resolve(this.result); }
+
+  then<TResult1 = { data: any; error: null | Error }, TResult2 = never>(
+    onfulfilled?: ((value: { data: any; error: null | Error }) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null,
+  ) {
+    return Promise.resolve(this.result).then(onfulfilled as any, onrejected as any);
+  }
+
+  catch<TResult = never>(
+    onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | null,
+  ) {
+    return Promise.resolve(this.result).catch(onrejected as any);
+  }
+
+  finally(onfinally?: (() => void) | null) {
+    return Promise.resolve(this.result).finally(onfinally as any);
+  }
+}
+
+const makeMockChannel = (): MockChannel => ({
+  on() {
+    return this;
+  },
+  subscribe(callback) {
+    callback?.('CLOSED');
+    return this;
+  },
+  async track() {
+    return { error: null };
+  },
+  async send() {
+    return { error: null };
+  },
+  presenceState() {
+    return {};
+  },
+  unsubscribe() {},
+});
+
+const env = import.meta.env as Record<string, string | undefined>;
+const SUPABASE_URL =
+  env.VITE_SUPABASE_URL ||
+  env.VITE_PUBLIC_SUPABASE_URL ||
+  localStorage.getItem('fiesta_supabase_url') ||
+  undefined;
+
+const SUPABASE_PUBLISHABLE_KEY =
+  env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  env.VITE_SUPABASE_ANON_KEY ||
+  env.VITE_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+  env.VITE_PUBLIC_SUPABASE_ANON_KEY ||
+  localStorage.getItem('fiesta_supabase_key') ||
+  undefined;
+
 export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY) &&
   !SUPABASE_URL?.includes('placeholder') &&
   !SUPABASE_PUBLISHABLE_KEY?.includes('placeholder');
 
+const mockSupabase = {
+  channel() {
+    return makeMockChannel();
+  },
+  removeChannel() {
+    return Promise.resolve('ok');
+  },
+  from() {
+    return new MockQueryBuilder();
+  },
+  auth: {
+    async getSession() {
+      return { data: { session: null }, error: null };
+    },
+    onAuthStateChange() {
+      return {
+        data: {
+          subscription: {
+            unsubscribe() {},
+          },
+        },
+      };
+    },
+    async signInWithPassword() {
+      return { data: { user: null, session: null }, error: new Error('Supabase no configurado') };
+    },
+    async signUp() {
+      return { data: { user: null, session: null }, error: new Error('Supabase no configurado') };
+    },
+    async signOut() {
+      return { error: null };
+    },
+  },
+} as const;
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
-
-// Create a safe client. When not configured, we expose a proxy so imports don't crash.
 export const supabase: any = isSupabaseConfigured
-  ? createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-    auth: {
-      storage: localStorage,
-      persistSession: true,
-      autoRefreshToken: true,
-    },
-  })
-  : new Proxy(
-    {},
-    {
-      get() {
-        return () => {
-          throw new Error(
-            'Supabase no está configurado. Añade VITE_SUPABASE_URL y VITE_SUPABASE_PUBLISHABLE_KEY en Netlify para activar lo online.'
-          );
-        };
+  ? createClient<Database>(SUPABASE_URL!, SUPABASE_PUBLISHABLE_KEY!, {
+      auth: {
+        storage: localStorage,
+        persistSession: true,
+        autoRefreshToken: true,
       },
-    }
-  );
+    })
+  : mockSupabase;

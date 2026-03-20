@@ -7,14 +7,12 @@ import {
   Users,
   ShoppingBag,
   Coins,
-  Monitor,
   Crown,
   Sparkles,
   Medal,
   Flame,
   ShieldCheck,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useRanking, PlayerStats } from '@/hooks/useRanking';
@@ -146,22 +144,8 @@ export default function Profiles() {
   const [shopOpen, setShopOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [localPlayerName, setLocalPlayerName] = useState<string>('');
-  const [screencastActive, setScreencastActive] = useState(false);
   const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
   const { profile, syncEconomy } = useAuth();
-
-  const handleScreenShare = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-      setScreencastActive(true);
-      toast.success('¡Perfil proyectado! Disfruta en tu TV.');
-      stream.getVideoTracks()[0].onended = () => {
-        setScreencastActive(false);
-      };
-    } catch {
-      toast.error('No se pudo iniciar la proyección.');
-    }
-  };
 
   React.useEffect(() => {
     setLocalPlayerName(localStorage.getItem('fiesta_player_name') || '');
@@ -277,14 +261,6 @@ export default function Profiles() {
               >
                 <ShoppingBag className="h-4 w-4" />
                 Tienda Web
-              </Button>
-              <Button
-                variant="outline"
-                className={`h-11 rounded-2xl border-white/10 px-4 text-white hover:bg-white/[0.08] ${screencastActive ? 'bg-[hsl(var(--primary)/0.18)] text-[hsl(var(--accent))]' : 'bg-white/[0.04]'}`}
-                onClick={handleScreenShare}
-              >
-                <Monitor className={`h-4 w-4 ${screencastActive ? 'animate-pulse' : ''}`} />
-                {screencastActive ? 'PROYECTANDO' : 'Proyectar TV'}
               </Button>
             </div>
           </div>

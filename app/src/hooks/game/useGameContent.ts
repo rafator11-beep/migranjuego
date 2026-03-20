@@ -59,6 +59,13 @@ function shuffleArray<T>(array: T[]): T[] {
     return shuffled.sort(() => Math.random() - 0.5);
 }
 
+function normalizeDeckEntries(items: any[]): string[] {
+    return items
+        .map(item => typeof item === 'string' ? item : String(item ?? ''))
+        .map(item => item.replace(/\s+/g, ' ').trim())
+        .filter(item => item.length > 0 && item !== 'undefined' && item !== 'null');
+}
+
 function applyVoteWeights(items: string[], category: string): string[] {
     try {
         const raw = localStorage.getItem('fiesta-party-votes');
@@ -152,7 +159,8 @@ export const useGameContent = (mode: GameMode, currentIndex: number, currentPlay
                 modeContent = getMegamixContent(200);
         }
 
-        const weighted = applyVoteWeights(modeContent as string[], mode);
+        const cleanedContent = normalizeDeckEntries(modeContent as any[]);
+        const weighted = normalizeDeckEntries(applyVoteWeights(cleanedContent, mode));
         setContent(weighted);
 
         // Reset used questions for fresh game
@@ -199,7 +207,7 @@ export const useGameContent = (mode: GameMode, currentIndex: number, currentPlay
 
     const loadSpecificQuestion = useCallback((category: 'futbol' | 'cultura') => {
         const isFootball = category === 'futbol';
-        const sourceQuestions = (isFootball ? footballQuestions : cultureQuestions) as any[];
+        const sourceQuestions = (isFootball ? footballQuestions : [...cultureQuestions, ...cultureQuestionsNew2025]) as any[];
 
         // Safety check
         if (!sourceQuestions || sourceQuestions.length === 0) {
@@ -233,8 +241,11 @@ export const useGameContent = (mode: GameMode, currentIndex: number, currentPlay
         if (mode === 'trivia_futbol' || mode === 'cultura') {
             return currentQuestion?.question || 'Cargando pregunta...';
         }
-        const baseContent = content.length > 0 ? content[currentIndex % content.length] : undefined;
-        return baseContent?.replace(/{player}/g, currentPlayerName) || 'Cargando reto... (Si este mensaje persiste, refresca)';
+        const validContent = content.length > 0
+            ? content.find((item, idx) => idx >= (currentIndex % content.length) && typeof item === 'string' && item.trim().length > 0)
+              || content.find((item) => typeof item === 'string' && item.trim().length > 0)
+            : undefined;
+        return validContent?.replace(/{player}/g, currentPlayerName) || 'Siguiente carta';
     };
 
     const getNextPreview = (showTrivia: boolean) => {

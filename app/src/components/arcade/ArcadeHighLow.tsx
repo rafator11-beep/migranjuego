@@ -33,6 +33,7 @@ export function ArcadeHighLow({ roomId, playerId, onClose }: ArcadeHighLowProps 
 
     const [phase, setPhase] = useState<GamePhase>('waiting_sync');
     const [remotePlayerReady, setRemotePlayerReady] = useState(false);
+    const isBotMatch = roomId.startsWith('bot_');
 
     const [myScore, setMyScore] = useState(0);
     const [remoteScore, setRemoteScore] = useState(0);
@@ -50,6 +51,11 @@ export function ArcadeHighLow({ roomId, playerId, onClose }: ArcadeHighLowProps 
 
         const channel = supabase.channel(`highlow-${roomId}`);
         channelRef.current = channel;
+
+        if (isBotMatch) {
+            const botReadyTimer = setTimeout(() => setRemotePlayerReady(true), 700);
+            return () => clearTimeout(botReadyTimer);
+        }
 
         channel
             .on('broadcast', { event: 'ready' }, () => {
@@ -81,17 +87,19 @@ export function ArcadeHighLow({ roomId, playerId, onClose }: ArcadeHighLowProps 
             });
 
         return () => {
-            supabase.removeChannel(channel);
+            if (!isBotMatch) supabase.removeChannel(channel);
         };
-    }, [roomId, effectivePlayerId]);
+    }, [roomId, effectivePlayerId, isBotMatch]);
 
     const handleStartSync = () => {
         const initial = getRandomCard();
-        channelRef.current?.send({
-            type: 'broadcast',
-            event: 'start_game',
-            payload: { startingCard: initial }
-        });
+        if (!isBotMatch) {
+            channelRef.current?.send({
+                type: 'broadcast',
+                event: 'start_game',
+                payload: { startingCard: initial }
+            });
+        }
         setCurrentCard(initial);
         startCountdown();
     };
@@ -129,11 +137,13 @@ export function ArcadeHighLow({ roomId, playerId, onClose }: ArcadeHighLowProps 
                 nextScore += 1;
                 setMyScore(nextScore);
 
-                channelRef.current?.send({
-                    type: 'broadcast',
-                    event: 'score_update',
-                    payload: { playerId: effectivePlayerId, score: nextScore }
-                });
+                if (!isBotMatch) {
+                    channelRef.current?.send({
+                        type: 'broadcast',
+                        event: 'score_update',
+                        payload: { playerId: effectivePlayerId, score: nextScore }
+                    });
+                }
 
                 if (nextScore >= WIN_STREAK_TARGET) {
                     setWinner(effectivePlayerId);
@@ -144,11 +154,13 @@ export function ArcadeHighLow({ roomId, playerId, onClose }: ArcadeHighLowProps 
                 setMyScore(0);
                 if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
 
-                channelRef.current?.send({
-                    type: 'broadcast',
-                    event: 'score_update',
-                    payload: { playerId: effectivePlayerId, score: 0 }
-                });
+                if (!isBotMatch) {
+                    channelRef.current?.send({
+                        type: 'broadcast',
+                        event: 'score_update',
+                        payload: { playerId: effectivePlayerId, score: 0 }
+                    });
+                }
             }
 
             // advance card
@@ -159,6 +171,25 @@ export function ArcadeHighLow({ roomId, playerId, onClose }: ArcadeHighLowProps 
             }
         }, 1000);
     };
+
+
+    useEffect(() => {
+        if (!isBotMatch || phase !== 'playing' || winner) return;
+
+        const botTurn = setTimeout(() => {
+            const willScore = Math.random() > 0.35;
+            setRemoteScore((prev) => {
+                const next = willScore ? prev + 1 : 0;
+                if (next >= WIN_STREAK_TARGET) {
+                    setWinner('remote');
+                    setPhase('result');
+                }
+                return next;
+            });
+        }, 900 + Math.random() * 900);
+
+        return () => clearTimeout(botTurn);
+    }, [isBotMatch, phase, remoteScore, winner, currentCard]);
 
     const renderCard = (cardString: string, hidden: boolean = false) => {
         if (hidden) {

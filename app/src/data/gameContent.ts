@@ -9,6 +9,10 @@ import {
   picanteExtra2, clasicoExtra2, pacoversExtra2, bocaCerradaExtra2,
   impostorExtra2, enLaCamaYExtra2, categoriasLetrasExtra2
 } from './gameContentExtra2';
+import {
+  clasicoExtra3, yoNuncaExtra3, picanteExtra3, masProbableExtra3,
+  pacoversExtra3, enLaCamaYExtra3, categoriasLetrasExtra3, categoriasRetoExtra3
+} from './gameContentExtra3';
 export interface GameQuestion {
   text: string;
   type: 'reto' | 'yo_nunca' | 'pregunta' | 'votacion' | 'accion';
@@ -6600,6 +6604,13 @@ export function getMegamixContent(count: number): string[] {
 // 7. Trivia (triggers, periodic)
 // 8. Boca cerrada / Impostor (MINIMAL — rare events)
 export function getStructuredMegamix(count: number, playersCount: number = 4): string[] {
+  function cleanDeckPool(items: any[]): string[] {
+    return items
+      .map(item => typeof item === 'string' ? item : String(item ?? ''))
+      .map(item => item.replace(/\s+/g, ' ').trim())
+      .filter(item => item.length > 0 && item !== 'undefined' && item !== 'null');
+  }
+
 
   // Drinking suffixes by difficulty tier
   const tragosLeves = [
@@ -6654,35 +6665,35 @@ export function getStructuredMegamix(count: number, playersCount: number = 4): s
   // --- Build content with weighted frequencies ---
 
   // Get unique samples to avoid duplicates, now using ALL available items
-  const yoNuncaPool = [...yoNunca, ...(yoNuncaExtra || []), ...(yoNuncaExtra2 || [])];
+  const yoNuncaPool = cleanDeckPool([...yoNunca, ...(yoNuncaExtra || []), ...(yoNuncaExtra2 || []), ...(yoNuncaExtra3 || [])]);
   const yoNuncaItems = getRandomItems(yoNuncaPool, yoNuncaPool.length);
   const yoNuncaCards = yoNuncaItems.map(q => addDrinking(`🙈 Yo nunca... ${q}`, Math.random() < 0.4 ? 'medio' : 'leve'));
 
-  const masProbablePool = [...quienEsMasProbable, ...(masProbableExtra || []), ...(quienEsMasProbableExtra2 || [])];
+  const masProbablePool = cleanDeckPool([...quienEsMasProbable, ...(masProbableExtra || []), ...(quienEsMasProbableExtra2 || []), ...(masProbableExtra3 || [])]);
   const masProbableItems = getRandomItems(masProbablePool, masProbablePool.length);
   const masProbableCards = masProbableItems.map(q => addDrinking(`🗳️ ${q}`, Math.random() < 0.3 ? 'medio' : 'leve'));
 
-  const retosPool = [...categoriasReto, ...(categoriasRetoExtra || []), ...(categoriasRetoExtra2 || [])];
+  const retosPool = cleanDeckPool([...categoriasReto, ...(categoriasRetoExtra || []), ...(categoriasRetoExtra2 || []), ...(categoriasRetoExtra3 || [])]);
   const retosItems = getRandomItems(retosPool, retosPool.length);
   const retosCards = retosItems.map(q => addDrinking(`🎯 ${q}`, Math.random() < 0.5 ? 'medio' : 'reparte'));
 
-  const clasicoPool = [...clasico, ...(clasicoExtra || []), ...(clasicoExtra2 || [])];
+  const clasicoPool = cleanDeckPool([...clasico, ...(clasicoExtra || []), ...(clasicoExtra2 || []), ...(clasicoExtra3 || [])]);
   const clasicoItems = getRandomItems(clasicoPool, clasicoPool.length);
   const clasicoCards = clasicoItems.map(q => addDrinking(q, Math.random() < 0.5 ? 'leve' : 'grupo'));
 
-  const pacoversPool = [...pacovers, ...(pacoversExtra || []), ...(pacoversExtra2 || [])];
+  const pacoversPool = cleanDeckPool([...pacovers, ...(pacoversExtra || []), ...(pacoversExtra2 || []), ...(pacoversExtra3 || [])]);
   const pacoversItems = getRandomItems(pacoversPool, pacoversPool.length);
   const pacoversCards = pacoversItems.map(q => addDrinking(`🇪🇸 ${q}`, 'leve'));
 
-  const picantePool = [...picante, ...(picanteExtra || []), ...(picanteExtra2 || [])];
+  const picantePool = cleanDeckPool([...picante, ...(picanteExtra || []), ...(picanteExtra2 || []), ...(picanteExtra3 || [])]);
   const picanteItems = getRandomItems(picantePool, picantePool.length);
   const picanteCards = picanteItems.map(q => addDrinking(`🌶️ ${q}`, Math.random() < 0.5 ? 'medio' : 'fuerte'));
 
-  const enLaCamaPool = [...enLaCamaY, ...(enLaCamaYExtra || []), ...(enLaCamaYExtra2 || [])];
+  const enLaCamaPool = cleanDeckPool([...enLaCamaY, ...(enLaCamaYExtra || []), ...(enLaCamaYExtra2 || []), ...(enLaCamaYExtra3 || [])]);
   const enLaCamaItems = getRandomItems(enLaCamaPool, enLaCamaPool.length);
   const enLaCamaCards = enLaCamaItems.map(q => addDrinking(`🛌 ${q}`, 'medio'));
 
-  const categoriasPool = [...categoriasLetras, ...(categoriasLetrasExtra || []), ...(categoriasLetrasExtra2 || [])];
+  const categoriasPool = cleanDeckPool([...categoriasLetras, ...(categoriasLetrasExtra || []), ...(categoriasLetrasExtra2 || []), ...(categoriasLetrasExtra3 || [])]);
   const categoriasItems = getRandomItems(categoriasPool, categoriasPool.length);
   const categoriasCards = categoriasItems.map(q => addDrinking(`🔤 ${q}`, 'reparte'));
 
@@ -6710,7 +6721,7 @@ export function getStructuredMegamix(count: number, playersCount: number = 4): s
   ];
 
   // Mix content + triggers
-  const allCards = shuffleArray([...weightedContent, ...triggers]);
+  const allCards = shuffleArray(cleanDeckPool([...weightedContent, ...triggers]));
 
   // Build deck: take 'count' cards
   const deck: string[] = [];
@@ -6728,7 +6739,7 @@ export function getStructuredMegamix(count: number, playersCount: number = 4): s
     `📜 NORMA: ${n.replace(/NORMA:|NORMA: |📜 |\\\./g, '').trim()}`
   );
 
-  return shuffleArray([...deck, ...selectedNormas]);
+  return shuffleArray(cleanDeckPool([...deck, ...selectedNormas]));
 }
 
 function shuffleArray<T>(array: T[]): T[] {

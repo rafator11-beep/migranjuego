@@ -28,6 +28,7 @@ export function ArcadeSimonPvP({ roomId, playerId, onClose }: ArcadeSimonPvPProp
 
     const [phase, setPhase] = useState<GamePhase>('waiting_sync');
     const [remotePlayerReady, setRemotePlayerReady] = useState(false);
+    const isBotMatch = roomId.startsWith('bot_');
 
     const [winner, setWinner] = useState<string | null>(null);
 
@@ -43,6 +44,11 @@ export function ArcadeSimonPvP({ roomId, playerId, onClose }: ArcadeSimonPvPProp
 
         const channel = supabase.channel(`simon-${roomId}`);
         channelRef.current = channel;
+
+        if (isBotMatch) {
+            const botReadyTimer = setTimeout(() => setRemotePlayerReady(true), 700);
+            return () => clearTimeout(botReadyTimer);
+        }
 
         channel
             .on('broadcast', { event: 'ready' }, () => {
@@ -71,17 +77,19 @@ export function ArcadeSimonPvP({ roomId, playerId, onClose }: ArcadeSimonPvPProp
             });
 
         return () => {
-            supabase.removeChannel(channel);
+            if (!isBotMatch) supabase.removeChannel(channel);
         };
-    }, [roomId, effectivePlayerId]);
+    }, [roomId, effectivePlayerId, isBotMatch]);
 
     const handleStartSync = () => {
         const initialItem = Math.floor(Math.random() * 4) as ColorCode;
-        channelRef.current?.send({
-            type: 'broadcast',
-            event: 'start_game',
-            payload: { initialSequence: [initialItem] }
-        });
+        if (!isBotMatch) {
+            channelRef.current?.send({
+                type: 'broadcast',
+                event: 'start_game',
+                payload: { initialSequence: [initialItem] }
+            });
+        }
         setSequence([initialItem]);
         startCountdown();
     };
@@ -123,11 +131,13 @@ export function ArcadeSimonPvP({ roomId, playerId, onClose }: ArcadeSimonPvPProp
                 const newSeq = [...sequence, nextColor];
                 setSequence(newSeq);
                 
-                channelRef.current?.send({
-                    type: 'broadcast',
-                    event: 'round_cleared',
-                    payload: { newSequence: newSeq }
-                });
+                if (!isBotMatch) {
+                    channelRef.current?.send({
+                        type: 'broadcast',
+                        event: 'round_cleared',
+                        payload: { newSequence: newSeq }
+                    });
+                }
                 
                 playSequence(newSeq);
             } else {
@@ -137,13 +147,30 @@ export function ArcadeSimonPvP({ roomId, playerId, onClose }: ArcadeSimonPvPProp
             // Failure
             setWinner('remote');
             setPhase('result');
-            channelRef.current?.send({
-                type: 'broadcast',
-                event: 'died',
-                payload: { playerId: effectivePlayerId }
-            });
+            if (!isBotMatch) {
+                channelRef.current?.send({
+                    type: 'broadcast',
+                    event: 'died',
+                    payload: { playerId: effectivePlayerId }
+                });
+            }
         }
     };
+
+
+    useEffect(() => {
+        if (!isBotMatch || phase !== 'observing' || sequence.length === 0 || winner) return;
+
+        const botRound = setTimeout(() => {
+            const botFails = Math.random() < Math.min(0.18 + sequence.length * 0.06, 0.7);
+            if (botFails) {
+                setWinner(effectivePlayerId);
+                setPhase('result');
+            }
+        }, 1000 + sequence.length * 180);
+
+        return () => clearTimeout(botRound);
+    }, [isBotMatch, phase, sequence, winner, effectivePlayerId]);
 
     return (
         <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
