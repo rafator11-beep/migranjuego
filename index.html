@@ -1,31 +1,27 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <script>
-    // Este script corrige el problema de las rutas en GitHub Pages
-    (function() {
-      var path = window.location.pathname;
-      if (path.includes('/migranjuego/')) {
-        // Si no hay hash (#), lo redirigimos al inicio del juego
-        if (!window.location.hash || window.location.hash === '#/') {
-          window.history.replaceState(null, null, '/migranjuego/#/');
-        }
-      }
-    })();
-  </script>
-
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" type="image/x-icon" href="favicon.ico" />
-  
   <title>El Mejor Juego de la Historia</title>
-  <meta name="description" content="Lovable Generated Project" />
-  <meta name="author" content="Lovable" />
+  
+  <script type="text/javascript">
+    // Parche de redirección para GitHub Pages
+    (function(l) {
+      if (l.search[1] === '/' ) {
+        var decoded = l.search.slice(1).split('&').map(function(s) { 
+          return s.replace(/~and~/g, '&')
+        }).join('?');
+        window.history.replaceState(null, null,
+            l.pathname.slice(0, -1) + decoded + l.hash
+        );
+      }
+    }(window.location))
+  </script>
 
   <script type="module" crossorigin src="assets/index-4c908fdb.js"></script>
   <link rel="stylesheet" href="assets/index-601e1ebd.css">
 </head>
-
 <body>
   <div id="root"></div>
 </body>
