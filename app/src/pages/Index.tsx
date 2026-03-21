@@ -1,6 +1,6 @@
 import { useState, useEffect, Suspense, lazy } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Globe, Smartphone } from 'lucide-react';
+import { Globe, Smartphone, Coins } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { GameProvider, useGameContext } from '@/contexts/GameContext';
@@ -63,6 +63,7 @@ function GameAppInner() {
   // New state for Mode Options (Local vs Online)
   const [selectedModeForOptions, setSelectedModeForOptions] = useState<GameMode | null>(null);
   const [pendingHostMode, setPendingHostMode] = useState<GameMode | null>(null);
+  const [pendingBetMode, setPendingBetMode] = useState<{mode: GameMode, isOnline: boolean} | null>(null);
 
   // Game Context
   const { createGame, setGameId, players, localPlayerId, gameId, addPlayer, game, createTeam, assignPlayerToTeam, setLocalPlayerId } = useGameContext();
@@ -131,10 +132,18 @@ function GameAppInner() {
   }, [gameId, isHost, localPlayerId, addPlayer, createTeam, assignPlayerToTeam, setLocalPlayerId]);
 
   const handleModeClick = (mode: GameMode) => {
+    if (mode === 'poker' || mode === 'parchis') {
+       setPendingBetMode({ mode, isOnline: true });
+       return;
+    }
     setSelectedModeForOptions(mode);
   };
 
   const handleJuegoTabSelect = (mode: GameMode, playMode: PlayMode) => {
+    if (mode === 'poker' || mode === 'parchis') {
+       setPendingBetMode({ mode, isOnline: playMode === 'online' });
+       return;
+    }
     if (playMode === 'online') {
       setPendingHostMode(mode);
       setScreen('lobby');
@@ -145,18 +154,6 @@ function GameAppInner() {
 
   const confirmModeSelection = async (isOnline: boolean) => {
     if (!selectedModeForOptions) return;
-
-    // Entry Cost Checks
-    if (selectedModeForOptions === 'poker' && (profile?.coins || 0) < 50) {
-      toast.error("Necesitas al menos 50 monedas para jugar al Poker.");
-      setSelectedModeForOptions(null);
-      return;
-    }
-    if (selectedModeForOptions === 'parchis' && (profile?.coins || 0) < 20) {
-      toast.error("Necesitas al menos 20 monedas para jugar al Parchís.");
-      setSelectedModeForOptions(null);
-      return;
-    }
 
     try {
       if (isOnline) {
@@ -177,16 +174,6 @@ function GameAppInner() {
   };
 
   const handleSelectMode = async (mode: GameMode) => {
-    // Quick entry cost check for local play (though poker/parchis are usually online, just in case)
-    if (mode === 'poker' && (profile?.coins || 0) < 50) {
-      toast.error("Necesitas al menos 50 monedas para jugar al Poker.");
-      return;
-    }
-    if (mode === 'parchis' && (profile?.coins || 0) < 20) {
-      toast.error("Necesitas al menos 20 monedas para jugar al Parchís.");
-      return;
-    }
-
     if (TEAM_CAPABLE_MODES.includes(mode)) {
       setPendingMode(mode);
       setScreen('team-mode-select');
@@ -631,6 +618,51 @@ function GameAppInner() {
       <AuthOverlay />
       <GlobalPresence />
       {getScreenContent()}
+
+      {/* ROOM/BET OPTIONS DIALOG (Poker, Parchis) */}
+      <Dialog open={!!pendingBetMode} onOpenChange={(o) => !o && setPendingBetMode(null)}>
+        <DialogContent className="sm:max-w-xl border-white/10 bg-[linear-gradient(180deg,hsl(var(--card)/0.98),hsl(var(--card)/0.92))]" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-2xl">
+              <Coins className="text-yellow-400" />
+              <span>Elige Sala de Apuestas</span>
+            </DialogTitle>
+            <DialogDescription>Entra en una sala adaptada a tus fondos. El ganador se lleva la bolsa.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4 sm:grid-cols-2">
+            {[0, 50, 100, 500].map(amount => (
+              <Button
+                key={amount}
+                variant="outline"
+                className="group h-auto min-h-[120px] flex-col items-center justify-center gap-2 rounded-[24px] border-white/10 bg-white/[0.03] p-4 text-center hover:border-yellow-500/40 hover:bg-white/[0.06] transition-all"
+                onClick={() => {
+                   if (amount > 0 && (profile?.coins || 0) < amount) {
+                     toast.error(`Necesitas al menos ${amount} monedas para entrar aquí.`);
+                     return;
+                   }
+                   sessionStorage.setItem('current_bet_amount', amount.toString());
+                   const mode = pendingBetMode!.mode;
+                   const isOnline = pendingBetMode!.isOnline;
+                   setPendingBetMode(null);
+                   if (isOnline) {
+                     setPendingHostMode(mode);
+                     setScreen('lobby');
+                   } else {
+                     handleSelectMode(mode);
+                   }
+                }}
+              >
+                <div className="flex items-center gap-2 text-xl font-black text-white">
+                  {amount === 0 ? 'Mesa de Recreo' : `Sala ${amount}M`}
+                </div>
+                <div className="text-sm font-medium text-yellow-500 flex items-center gap-1">
+                  {amount === 0 ? 'Juega Gratis' : <><Coins className="w-4 h-4" /> Coste entrada: {amount}</>}
+                </div>
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* MODE OPTIONS DIALOG (Local vs Online) */}
       <Dialog open={!!selectedModeForOptions} onOpenChange={(o) => !o && setSelectedModeForOptions(null)}>

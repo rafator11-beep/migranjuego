@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useGameContext } from '@/contexts/GameContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useSavedPlayers } from '@/hooks/useSavedPlayers';
 import { compressImageToDataUrl } from '@/utils/imageCompression';
 import { toast } from 'sonner';
@@ -17,12 +18,22 @@ interface GuestSetupProps {
 
 export function GuestSetup({ onJoin, onBack }: GuestSetupProps) {
   const { addPlayer, gameId, game, setLocalPlayerId, createTeam, assignPlayerToTeam } = useGameContext();
+  const { setAuthOverlayOpen, profile, user } = useAuth();
   const { savedPlayers, savePlayer } = useSavedPlayers();
   const [playerName, setPlayerName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [profileSearch, setProfileSearch] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (profile?.username && !playerName) {
+       setPlayerName(profile.username);
+    }
+    if (profile?.avatar_url && !avatarUrl) {
+       setAvatarUrl(profile.avatar_url);
+    }
+  }, [profile]);
 
   const [detectedGameMode, setDetectedGameMode] = useState<string | null>(null);
   const isTeamMode = game?.mode === 'yo_nunca_equipos' || detectedGameMode === 'yo_nunca_equipos';
@@ -203,6 +214,20 @@ export function GuestSetup({ onJoin, onBack }: GuestSetupProps) {
                       </button>
                     ))}
                   </div>
+                </div>
+              )}
+              
+              {!user ? (
+                <div className="mt-6 rounded-[24px] border border-[hsl(var(--primary)/0.3)] bg-[hsl(var(--primary)/0.05)] p-4 text-center">
+                  <p className="text-sm font-semibold text-white mb-2">¿Juegas habitualmente?</p>
+                  <Button onClick={() => setAuthOverlayOpen(true)} className="w-full bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--accent)))] text-white font-bold rounded-xl h-11 border-none hover:opacity-90 transition-opacity shadow-lg">
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Crear Cuenta Definitiva
+                  </Button>
+                </div>
+              ) : (
+                <div className="mt-6 rounded-[24px] border border-green-500/30 bg-green-500/10 p-4 text-center">
+                  <p className="text-sm font-semibold text-green-400">Sesión iniciada como {profile?.username || user.email}</p>
                 </div>
               )}
             </div>
